@@ -13,7 +13,7 @@ import (
 type LanguageCode string
 
 func (l LanguageCode) Name() Language {
-	return LanguageMap[l]
+	return LanguageCodeToLanguage[l]
 }
 
 func (l LanguageCode) String() string {
@@ -21,6 +21,15 @@ func (l LanguageCode) String() string {
 }
 
 type LanguageCodes []LanguageCode
+
+func (l LanguageCodes) Strings() []string {
+	strs := make([]string, 0, len(l))
+	for _, v := range l {
+		strs = append(strs, string(v))
+	}
+
+	return strs
+}
 
 type Language string
 
@@ -42,8 +51,19 @@ const (
 	LanguageFrench   Language = "French"
 )
 
+type LanguageMap map[LanguageCode]Language
+
+func (l LanguageMap) Keys() LanguageCodes {
+	keys := make(LanguageCodes, 0, len(l))
+	for k := range l {
+		keys = append(keys, k)
+	}
+
+	return keys
+}
+
 var (
-	LanguageMap = map[LanguageCode]Language{
+	LanguageCodeToLanguage = LanguageMap{
 		LanguageCodeKorean:   LanguageKorean,
 		LanguageCodeEnglish:  LanguageEnglish,
 		LanguageCodeJapanese: LanguageJapanese,
