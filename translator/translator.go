@@ -32,6 +32,7 @@ var (
 type Config struct {
 	SourceLanguage  config.LanguageCode
 	TargetLanguages config.LanguageCodes
+	Model           openai.ChatModel
 }
 
 type Translator interface {
@@ -121,7 +122,7 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 					},
 					openai.UserMessage(prompt),
 				}),
-				Model: openai.F(openai.ChatModelGPT4o),
+				Model: openai.F(t.cfg.Model),
 			})
 
 			if err != nil {

@@ -54,6 +54,7 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 	t := translator.New(env.Client, translator.Config{
 		SourceLanguage:  cfg.Translator.Source.SourceLanguage,
 		TargetLanguages: cfg.Translator.Target.TargetLanguages,
+		Model:           cfg.OpenAI.Model,
 	})
 
 	w := file.NewWriter(file.WriterConfig{

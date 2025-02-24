@@ -106,6 +106,11 @@ func New(configPath string) (*Config, error) {
 
 	config.Translator.ContentDir = replaceHomeDir(config.Translator.ContentDir)
 
+	// Set default values
+	if config.OpenAI.Model == "" {
+		config.OpenAI.Model = openai.ChatModelGPT4o
+	}
+
 	return &config, nil
 }
 
