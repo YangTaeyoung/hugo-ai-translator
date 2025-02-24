@@ -18,6 +18,11 @@ func NewCommand() *cli.Command {
 				Usage: "history file path",
 				Value: "~/.hugo_ai_translator/history.log",
 			},
+			&cli.BoolFlag{
+				Name:  "--re-translate",
+				Usage: "re-translate all files",
+				Value: false,
+			},
 		},
 		Action: TranslateAction,
 	}

@@ -15,7 +15,11 @@ import (
 )
 
 func TranslateAction(ctx context.Context, cmd *cli.Command) error {
-	cfgPath := cmd.String("config")
+	var (
+		translatedPaths []string
+		cfgPath         = cmd.String("config")
+		reTranslate     = cmd.Bool("--re-translate")
+	)
 
 	cfg, err := config.New(cfgPath)
 	if err != nil {
@@ -23,9 +27,11 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 	}
 	slog.InfoContext(ctx, "config parsed", "path", cfgPath)
 
-	translatedPaths, err := config.TranslatedPaths(cmd.String("history-path"))
-	if err != nil {
-		return err
+	if !reTranslate {
+		translatedPaths, err = config.TranslatedPaths(cmd.String("history-path"))
+		if err != nil {
+			return err
+		}
 	}
 
 	env := environment.New(cfg)
@@ -85,8 +91,14 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 			return err
 		}
 
-		if err = config.AppendTranslatedPaths(cmd.String("history-path"), saved...); err != nil {
-			return err
+		if reTranslate {
+			if err = config.WriteTranslatedPaths(cmd.String("history-path"), saved...); err != nil {
+				return err
+			}
+		} else {
+			if err = config.AppendTranslatedPaths(cmd.String("history-path"), saved...); err != nil {
+				return err
+			}
 		}
 
 		if err = bar.Add(1); err != nil {

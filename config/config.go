@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/openai/openai-go"
@@ -117,6 +118,26 @@ func TranslatedPaths(historyPath string) ([]string, error) {
 	}
 
 	return strings.Split(string(file), "\n"), nil
+}
+
+func WriteTranslatedPaths(historyPath string, translatedPaths ...string) error {
+	if err := os.Mkdir(filepath.Dir(replaceHomeDir(historyPath)), os.ModePerm); err != nil {
+		return errors.Wrap(err, "failed to create directory")
+	}
+
+	f, err := os.Create(replaceHomeDir(historyPath))
+	if err != nil {
+		return errors.Wrap(err, "failed to create file")
+	}
+	defer f.Close()
+
+	for _, p := range translatedPaths {
+		if _, err = f.WriteString(p + "\n"); err != nil {
+			return errors.Wrap(err, "failed to write string")
+		}
+	}
+
+	return nil
 }
 
 func AppendTranslatedPaths(historyPath string, translatedPaths ...string) error {
