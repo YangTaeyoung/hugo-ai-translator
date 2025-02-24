@@ -9,6 +9,8 @@ import (
 	"github.com/YangTaeyoung/hugo-ai-translator/environment"
 	"github.com/YangTaeyoung/hugo-ai-translator/file"
 	"github.com/YangTaeyoung/hugo-ai-translator/translator"
+	"github.com/k0kubun/go-ansi"
+	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli/v3"
 )
 
@@ -19,21 +21,29 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	slog.DebugContext(ctx, "config parsed", "path", cfgPath)
+	slog.InfoContext(ctx, "config parsed", "path", cfgPath)
+
+	translatedPaths, err := config.TranslatedPaths(cmd.String("history-path"))
+	if err != nil {
+		return err
+	}
 
 	env := environment.New(cfg)
-	slog.DebugContext(ctx, "environment created")
+	slog.InfoContext(ctx, "environment created")
 
 	p := file.NewParser(file.ParserConfig{
-		ContentDir:  cfg.Translator.ContentDir,
-		IgnoreRules: cfg.Translator.Source.IgnoreRules,
+		ContentDir:      cfg.Translator.ContentDir,
+		TranslatedPaths: translatedPaths,
+		TargetLanguages: cfg.Translator.Target.TargetLanguages,
+		TargetPathRule:  cfg.Translator.Target.TargetPathRule,
+		IgnoreRules:     cfg.Translator.Source.IgnoreRules,
 	})
 
 	markdownFiles, err := p.Parse(ctx)
 	if err != nil {
 		return err
 	}
-	slog.DebugContext(ctx, "markdown files parsed", "count", len(markdownFiles))
+	slog.InfoContext(ctx, "markdown files parsed", "count", len(markdownFiles))
 
 	t := translator.New(env.Client, translator.Config{
 		SourceLanguage:  cfg.Translator.Source.SourceLanguage,
@@ -45,22 +55,43 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 		TargetPathRule: cfg.Translator.Target.TargetPathRule,
 	})
 
-	for i, markdownFile := range markdownFiles {
-		var translated translator.Results
+	bar := progressbar.NewOptions(len(markdownFiles),
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetDescription("Translating ..."),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}))
 
-		translated, err = t.Translate(ctx, markdownFile)
+	for _, markdownFile := range markdownFiles {
+		var (
+			results translator.Results
+			saved   []string
+		)
+		bar.Describe(fmt.Sprintf("Translating %s ...", markdownFile.Path))
+
+		results, err = t.Translate(ctx, markdownFile)
 		if err != nil {
 			return err
 		}
 
-		if err = w.Write(ctx, translated.MarkdownFiles()); err != nil {
+		saved, err = w.Write(ctx, results.MarkdownFiles())
+		if err != nil {
 			return err
 		}
 
-		slog.InfoContext(ctx, "translated",
-			"path", markdownFile.Path,
-			"progress", fmt.Sprintf("%d/%d", i+1, len(markdownFiles)),
-		)
+		if err = config.AppendTranslatedPaths(cmd.String("history-path"), saved...); err != nil {
+			return err
+		}
+
+		if err = bar.Add(1); err != nil {
+			return err
+		}
 	}
 
 	return nil

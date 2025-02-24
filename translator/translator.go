@@ -81,7 +81,8 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
-	for _, targetLanguage := range t.cfg.TargetLanguages {
+	for _, targetLanguage := range source.TargetLanguages {
+		targetLanguage := targetLanguage
 		g.Go(func() error {
 			var (
 				fileName string
@@ -120,7 +121,7 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 					},
 					openai.UserMessage(prompt),
 				}),
-				Model: openai.F(openai.ChatModelGPT3_5Turbo),
+				Model: openai.F(openai.ChatModelGPT4o),
 			})
 
 			if err != nil {
@@ -141,7 +142,7 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 			content = strings.TrimSuffix(content, "\n")
 			content = strings.TrimSuffix(content, "```")
 
-			fileName, err = fileNameWithoutExtension(source.Path)
+			fileName, err = file.FileNameWithoutExtension(source.Path)
 			if err != nil {
 				return err
 			}

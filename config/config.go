@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/openai/openai-go"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -25,7 +26,7 @@ type Language string
 const (
 	LanguageCodeKorean   LanguageCode = "ko"
 	LanguageCodeEnglish  LanguageCode = "en"
-	LanguageCodeJapanese LanguageCode = "jp"
+	LanguageCodeJapanese LanguageCode = "ja"
 	LanguageCodeChinese  LanguageCode = "cn"
 	LanguageCodeSpanish  LanguageCode = "es"
 	LanguageCodeFrench   LanguageCode = "fr"
@@ -73,7 +74,8 @@ type Config struct {
 }
 
 type OpenAIConfig struct {
-	ApiKey string `yaml:"api_key"`
+	Model  openai.ChatModel `yaml:"model"`
+	ApiKey string           `yaml:"api_key"`
 }
 
 func replaceHomeDir(path string) string {
@@ -104,4 +106,36 @@ func New(configPath string) (*Config, error) {
 	config.Translator.ContentDir = replaceHomeDir(config.Translator.ContentDir)
 
 	return &config, nil
+}
+
+func TranslatedPaths(historyPath string) ([]string, error) {
+	file, err := os.ReadFile(replaceHomeDir(historyPath))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	} else if err != nil {
+		return nil, errors.Wrap(err, "failed to read file")
+	}
+
+	return strings.Split(string(file), "\n"), nil
+}
+
+func AppendTranslatedPaths(historyPath string, translatedPaths ...string) error {
+	f, err := os.OpenFile(replaceHomeDir(historyPath), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if errors.Is(err, os.ErrNotExist) {
+		f, err = os.Create(historyPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to create file")
+		}
+	} else if err != nil {
+		return errors.Wrap(err, "failed to open file")
+	}
+	defer f.Close()
+
+	for _, p := range translatedPaths {
+		if _, err = f.WriteString(p + "\n"); err != nil {
+			return errors.Wrap(err, "failed to write string")
+		}
+	}
+
+	return nil
 }

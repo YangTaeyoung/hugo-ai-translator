@@ -13,6 +13,11 @@ func NewCommand() *cli.Command {
 				Usage: "config file path",
 				Value: "~/.hugo_ai_translator/config.yaml",
 			},
+			&cli.StringFlag{
+				Name:  "history-path",
+				Usage: "history file path",
+				Value: "~/.hugo_ai_translator/history.log",
+			},
 		},
 		Action: TranslateAction,
 	}

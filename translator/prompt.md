@@ -14,12 +14,6 @@ ex )
 ```markdown
 ```
 
-result shouldn't be start with a code block like below.
-```markdown
-
-and shouldn't be end with a code block like below.
-```
-
 ## SourceLanguage
 {{ .SourceLanguage }}
 
@@ -27,6 +21,6 @@ and shouldn't be end with a code block like below.
 {{ .TargetLanguage }}
 
 ## Source
-```markdown
+"""
 {{ .Source }}
-```
+"""

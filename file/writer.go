@@ -2,12 +2,9 @@ package file
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/YangTaeyoung/hugo-ai-translator/config"
 	"github.com/pkg/errors"
@@ -23,7 +20,7 @@ type MarkdownFile struct {
 type MarkdownFiles []MarkdownFile
 
 type Writer interface {
-	Write(ctx context.Context, files MarkdownFiles) error
+	Write(ctx context.Context, files MarkdownFiles) ([]string, error)
 }
 
 type WriterConfig struct {
@@ -41,36 +38,28 @@ func NewWriter(cfg WriterConfig) Writer {
 	}
 }
 
-func (w writer) Write(ctx context.Context, files MarkdownFiles) error {
+func (w writer) Write(ctx context.Context, files MarkdownFiles) ([]string, error) {
 	var (
-		err error
+		paths []string
+		err   error
 	)
 
-	for i, file := range files {
-		replacer := strings.NewReplacer(
-			"{origin}", file.OriginDir,
-			"{language}", string(file.Language),
-			"{fileName}", file.FileName,
-		)
-
-		targetPath := path.Join(w.cfg.ContentDir, replacer.Replace(w.cfg.TargetPathRule))
+	for _, file := range files {
+		targetPath := TargetFilePath(w.cfg.ContentDir, w.cfg.TargetPathRule, file.OriginDir, string(file.Language), file.FileName)
 		slog.DebugContext(ctx, "output path for translated markdown", "path", targetPath)
 
 		parent := filepath.Dir(targetPath)
 
 		if err = os.MkdirAll(parent, os.ModePerm); err != nil {
-			return errors.Wrap(err, "failed to create parent directory")
+			return nil, errors.Wrap(err, "failed to create parent directory")
 		}
 
 		if err = os.WriteFile(targetPath, []byte(file.Content), os.ModePerm); err != nil {
-			return errors.Wrap(err, "failed to write translated markdown file")
+			return nil, errors.Wrap(err, "failed to write translated markdown file")
 		}
 
-		slog.InfoContext(ctx, "file written",
-			"path", targetPath,
-			"progress", fmt.Sprintf("%d/%d", i+1, len(files)),
-		)
+		paths = append(paths, targetPath)
 	}
 
-	return nil
+	return paths, nil
 }
