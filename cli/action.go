@@ -68,7 +68,6 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 	var (
 		translatedPaths []string
 		cfgPath         = cmd.String("config")
-		reTranslate     = cmd.Bool("--re-translate")
 	)
 
 	cfg, err := config.New(cfgPath)
@@ -76,13 +75,6 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 	slog.InfoContext(ctx, "config parsed", "path", cfgPath)
-
-	if !reTranslate {
-		translatedPaths, err = config.TranslatedPaths(cmd.String("history-path"))
-		if err != nil {
-			return err
-		}
-	}
 
 	env := environment.New(cfg)
 	slog.InfoContext(ctx, "environment created")
@@ -126,10 +118,8 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 		}))
 
 	for _, markdownFile := range markdownFiles {
-		var (
-			results translator.Results
-			saved   []string
-		)
+		var results translator.Results
+
 		bar.Describe(fmt.Sprintf("Translating %s ...", markdownFile.Path))
 
 		results, err = t.Translate(ctx, markdownFile)
@@ -137,23 +127,12 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 			return err
 		}
 
-		saved, err = w.Write(ctx, results.MarkdownFiles())
-		if err != nil {
+		if err = w.Write(ctx, results.MarkdownFiles()); err != nil {
 			return err
-		}
-
-		if reTranslate {
-			if err = config.WriteTranslatedPaths(cmd.String("history-path"), saved...); err != nil {
-				return err
-			}
-		} else {
-			if err = config.AppendTranslatedPaths(cmd.String("history-path"), saved...); err != nil {
-				return err
-			}
 		}
 
 		if err = bar.Add(1); err != nil {
-			return err
+			return errors.Wrap(err, "failed to update progress bar")
 		}
 	}
 
@@ -248,6 +227,16 @@ func ConfigureAction(_ context.Context, cmd *cli.Command) error {
 	}
 
 	fmt.Println("Config file is created at ", cfgPath)
+
+	return nil
+}
+
+func DebugModeAction(ctx context.Context, _ *cli.Command, debug bool) error {
+	if debug {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
+
+	slog.DebugContext(ctx, "debug mode on")
 
 	return nil
 }

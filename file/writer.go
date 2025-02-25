@@ -20,7 +20,7 @@ type MarkdownFile struct {
 type MarkdownFiles []MarkdownFile
 
 type Writer interface {
-	Write(ctx context.Context, files MarkdownFiles) ([]string, error)
+	Write(ctx context.Context, files MarkdownFiles) error
 }
 
 type WriterConfig struct {
@@ -38,28 +38,23 @@ func NewWriter(cfg WriterConfig) Writer {
 	}
 }
 
-func (w writer) Write(ctx context.Context, files MarkdownFiles) ([]string, error) {
-	var (
-		paths []string
-		err   error
-	)
-
+func (w writer) Write(ctx context.Context, files MarkdownFiles) error {
 	for _, file := range files {
-		targetPath := TargetFilePath(w.cfg.ContentDir, w.cfg.TargetPathRule, file.OriginDir, string(file.Language), file.FileName)
+		targetPath := TargetFileContentPath(w.cfg.ContentDir, w.cfg.TargetPathRule, file.OriginDir, file.Language.String(), file.FileName)
 		slog.DebugContext(ctx, "output path for translated markdown", "path", targetPath)
 
 		parent := filepath.Dir(targetPath)
 
-		if err = os.MkdirAll(parent, os.ModePerm); err != nil {
-			return nil, errors.Wrap(err, "failed to create parent directory")
+		if err := os.MkdirAll(parent, os.ModePerm); err != nil {
+			return errors.Wrap(err, "failed to create parent directory")
 		}
 
-		if err = os.WriteFile(targetPath, []byte(file.Content), os.ModePerm); err != nil {
-			return nil, errors.Wrap(err, "failed to write translated markdown file")
+		if err := WriteMarkdownWithFrontmatter(targetPath, []byte(file.Content), os.ModePerm,
+			"translated", true,
+		); err != nil {
+			return err
 		}
-
-		paths = append(paths, targetPath)
 	}
 
-	return paths, nil
+	return nil
 }

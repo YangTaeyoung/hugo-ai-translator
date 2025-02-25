@@ -141,7 +141,7 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 			content = strings.Trim(content, " ")
 			content = strings.TrimPrefix(content, "```markdown")
 			content = strings.TrimSuffix(content, "\n")
-			content = strings.TrimSuffix(content, "```")
+			content = strings.Trim(content, "```")
 
 			fileName, err = file.FileNameWithoutExtension(source.Path)
 			if err != nil {
@@ -153,7 +153,7 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 				Language:  targetLanguage,
 				FileName:  fileName,
 				OriginDir: filepath.Dir(source.Path),
-				Markdown:  file.Markdown(res.Choices[0].Message.Content),
+				Markdown:  file.Markdown(content),
 			})
 			mu.Unlock()
 

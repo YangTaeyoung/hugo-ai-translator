@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -12,6 +13,6 @@ func main() {
 	ctx := context.Background()
 
 	if err := cli.NewCommand().Run(ctx, os.Args); err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("%+v", err))
 	}
 }

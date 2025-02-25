@@ -13,15 +13,16 @@ func NewCommand() *cli.Command {
 				Usage: "config file path",
 				Value: "~/.hugo_ai_translator/config.yaml",
 			},
-			&cli.StringFlag{
-				Name:  "history-path",
-				Usage: "history file path",
-				Value: "~/.hugo_ai_translator/history.log",
-			},
 			&cli.BoolFlag{
 				Name:  "re-translate",
 				Usage: "re-translate all files",
 				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:   "debug",
+				Usage:  "debug mode",
+				Value:  false,
+				Action: DebugModeAction,
 			},
 		},
 		Commands: []*cli.Command{
@@ -38,6 +39,12 @@ func NewCommand() *cli.Command {
 						Name:  "dry-run",
 						Usage: "dry run",
 						Value: false,
+					},
+					&cli.BoolFlag{
+						Name:   "debug",
+						Usage:  "debug mode",
+						Value:  false,
+						Action: DebugModeAction,
 					},
 				},
 				Action: ConfigureAction,

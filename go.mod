@@ -13,6 +13,8 @@ require (
 )
 
 require (
+	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213 // indirect
@@ -30,4 +32,5 @@ require (
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
+	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

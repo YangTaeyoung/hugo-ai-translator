@@ -4,6 +4,7 @@ purpose is to correctly convert the source language to the target language.
 
 The content that needs to be translated is as follows.
 - title field in markdown front matter
+  - do not ":" in the title field because it is used as a delimiter.
 - Markdown content
 
 Markdown content should not translate content within code blocks.

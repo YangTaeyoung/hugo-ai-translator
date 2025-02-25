@@ -12,7 +12,7 @@ var (
 	ErrEmptyPath = errors.New("empty path")
 )
 
-func TargetFilePath(contentDir string,
+func TargetFileContentPath(contentDir string,
 	targetFilePathRule string,
 	origin string,
 	language string,
@@ -25,6 +25,21 @@ func TargetFilePath(contentDir string,
 	)
 
 	return path.Join(contentDir, replacer.Replace(targetFilePathRule))
+}
+
+func TargetFilePath(
+	targetFilePathRule string,
+	origin string,
+	language string,
+	fileName string,
+) string {
+	replacer := strings.NewReplacer(
+		"{origin}", origin,
+		"{language}", language,
+		"{fileName}", fileName,
+	)
+
+	return replacer.Replace(targetFilePathRule)
 }
 
 func FileNameWithoutExtension(path string) (string, error) {

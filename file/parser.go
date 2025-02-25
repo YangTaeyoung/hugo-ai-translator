@@ -1,16 +1,17 @@
 package file
 
 import (
+	"bytes"
 	"context"
 	"io/fs"
 	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/YangTaeyoung/hugo-ai-translator/config"
+	"github.com/adrg/frontmatter"
 	"github.com/bmatcuk/doublestar/v4"
 )
 
@@ -36,6 +37,12 @@ type ParserConfig struct {
 	TargetPathRule  string
 }
 
+type TranslateFrontMatter struct {
+	Translated bool `yaml:"translated"`
+}
+
+type TranslateFrontMatters []TranslateFrontMatter
+
 type Parser interface {
 	Parse(ctx context.Context) (ParsedMarkdownFiles, error)
 }
@@ -49,7 +56,7 @@ func NewParser(cfg ParserConfig) Parser {
 		cfg: cfg,
 	}
 }
-func (p parser) listMarkdownFilePaths(ctx context.Context) ([]string, error) {
+func (p parser) listMarkdownFilePaths() ([]string, error) {
 	var results []string
 
 	if err := filepath.WalkDir(p.cfg.ContentDir, func(filePath string, d fs.DirEntry, err error) error {
@@ -62,18 +69,6 @@ func (p parser) listMarkdownFilePaths(ctx context.Context) ([]string, error) {
 		}
 		// 확장자가 .md가 아니면 무시
 		if !strings.HasSuffix(d.Name(), ".md") {
-			return nil
-		}
-		// contentDir 기준의 상대 경로 계산
-
-		absPath, err := filepath.Abs(filePath)
-		if err != nil {
-			return err
-		}
-
-		// 이미 번역된 내역인 경우 무시함
-		if slices.Contains(p.cfg.TranslatedPaths, absPath) {
-			slog.DebugContext(ctx, "skip already translated file ", "path", absPath)
 			return nil
 		}
 
@@ -108,60 +103,74 @@ func (p parser) listMarkdownFilePaths(ctx context.Context) ([]string, error) {
 }
 
 func (p parser) Parse(ctx context.Context) (ParsedMarkdownFiles, error) {
-	filePaths, err := p.listMarkdownFilePaths(ctx)
+	var (
+		originMarkdownFiles ParsedMarkdownFiles
+		markdownFiles       ParsedMarkdownFiles
+		translatedMap       = make(map[string]bool)
+	)
+
+	filePaths, err := p.listMarkdownFilePaths()
 	if err != nil {
 		return nil, err
 	}
 	slog.DebugContext(ctx, "file path pattern match finished", "count", len(filePaths))
 
-	var markdownFiles ParsedMarkdownFiles
-
+	// 파일 경로를 순회하면서 front matter를 파싱
+	// 파싱한 front matter에 translated가 true로 설정되어 있으면 이미 번역된 파일로 간주,
+	// translatedMap에 파일 경로를 키로 추가하고 이미 번역된 파일을 다시 번역하지 않기 위해 skip
 	for _, filePath := range filePaths {
 		var file []byte
-
-		targetLanguages := make(config.LanguageCodes, 0, len(p.cfg.TargetLanguages))
-		for _, targetLanguage := range p.cfg.TargetLanguages {
-			var (
-				originDir string
-				fileName  string
-			)
-			originDir = filepath.Dir(filePath)
-			fileName, err = FileNameWithoutExtension(filePath)
-			if err != nil {
-				return nil, err
-			}
-
-			targetFilePath := TargetFilePath(p.cfg.ContentDir, p.cfg.TargetPathRule, originDir, targetLanguage.String(), fileName)
-
-			// 번역이 되지 않은 경우 번역 대상에 추가
-			if slices.Contains(p.cfg.TranslatedPaths, targetFilePath) {
-				slog.DebugContext(ctx, "skip already translated file",
-					"path", targetFilePath,
-					"language", targetLanguage.Name(),
-				)
-				continue
-			}
-
-			targetLanguages = append(targetLanguages, targetLanguage)
-		}
-
-		// 모든 언어가 이미 번역된 경우 해당 파일은 스킵
-		if len(targetLanguages) == 0 {
-			slog.DebugContext(ctx, "skip already translated file", "path", filePath)
-			continue
-		}
 
 		file, err = os.ReadFile(path.Join(p.cfg.ContentDir, filePath))
 		if err != nil {
 			return nil, err
 		}
 
-		markdownFiles = append(markdownFiles, ParsedMarkdownFile{
-			Path:            filePath,
-			Markdown:        Markdown(file),
-			TargetLanguages: targetLanguages,
+		var frontMatter TranslateFrontMatter
+
+		if _, err = frontmatter.Parse(bytes.NewReader(file), &frontMatter); err != nil {
+			return nil, err
+		}
+
+		if frontMatter.Translated {
+			translatedMap[filePath] = true
+			slog.DebugContext(ctx, "skip already translated file", "path", filePath)
+			continue
+		}
+
+		originMarkdownFiles = append(originMarkdownFiles, ParsedMarkdownFile{
+			Path:     filePath,
+			Markdown: Markdown(file),
 		})
-		slog.DebugContext(ctx, "markdown file parsed", "path", filePath)
+	}
+
+	// Origin Markdown 파일을 기반으로 번역할 언어를 설정. 이전 스텝에서 이미 번역된 파일의 경우 해당 파일의 번역 언어를 설정하지 않음
+	for _, originMarkdownFile := range originMarkdownFiles {
+		for _, lang := range p.cfg.TargetLanguages {
+			var fileName string
+
+			fileName, err = FileNameWithoutExtension(originMarkdownFile.Path)
+			if err != nil {
+				return nil, err
+			}
+
+			targetFilePath := TargetFilePath(p.cfg.TargetPathRule, filepath.Dir(originMarkdownFile.Path), lang.String(), fileName)
+			slog.Debug("output path for translated markdown", "path", targetFilePath)
+
+			if _, ok := translatedMap[targetFilePath]; ok {
+				slog.DebugContext(ctx, "skip already translated language", "path", targetFilePath, "language", lang)
+				continue
+			}
+
+			originMarkdownFile.TargetLanguages = append(originMarkdownFile.TargetLanguages, lang)
+		}
+
+		if len(originMarkdownFile.TargetLanguages) == 0 {
+			slog.DebugContext(ctx, "skip origin markdown file because no target languages", "path", originMarkdownFile.Path)
+			continue
+		}
+
+		markdownFiles = append(markdownFiles, originMarkdownFile)
 	}
 
 	return markdownFiles, nil
