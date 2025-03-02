@@ -7,14 +7,6 @@ The content that needs to be translated is as follows.
   - do not ":" in the title field because it is used as a delimiter.
 - Markdown content
 
-Markdown content should not translate content within code blocks.
-
-result shouldn't be wrapped in a code block. 
-
-ex )
-```markdown
-```
-
 ## SourceLanguage
 {{ .SourceLanguage }}
 

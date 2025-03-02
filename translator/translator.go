@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"log/slog"
 	"path/filepath"
-	"strings"
 	"sync"
 	"text/template"
 
@@ -109,6 +109,13 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 
 			prompt := buf.String()
 
+			schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{
+				Name:        openai.F("markdown"),
+				Description: openai.F("translated markdown"),
+				Schema:      openai.F(TranslateMarkdownSchema()),
+				Strict:      openai.Bool(true),
+			}
+
 			res, err = t.client.Chat.Completions.New(gctx, openai.ChatCompletionNewParams{
 				Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 					openai.ChatCompletionDeveloperMessageParam{
@@ -122,6 +129,11 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 					},
 					openai.UserMessage(prompt),
 				}),
+				ResponseFormat: openai.F[openai.ChatCompletionNewParamsResponseFormatUnion](
+					openai.ResponseFormatJSONSchemaParam{
+						Type:       openai.F(openai.ResponseFormatJSONSchemaTypeJSONSchema),
+						JSONSchema: openai.F(schemaParam),
+					}),
 				Model: openai.F(t.cfg.Model),
 			})
 
@@ -137,12 +149,10 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 				return ErrorEmptyResult
 			}
 
-			content := res.Choices[0].Message.Content
-			content = strings.Trim(content, " ")
-			content = strings.TrimPrefix(content, "```\n")
-			content = strings.TrimPrefix(content, "```markdown\n")
-			content = strings.TrimSuffix(content, "\n")
-			content = strings.Trim(content, "```")
+			var response TranslateResponse
+			if err = json.Unmarshal([]byte(res.Choices[0].Message.Content), &response); err != nil {
+				return err
+			}
 
 			fileName, err = file.FileNameWithoutExtension(source.Path)
 			if err != nil {
@@ -154,7 +164,7 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 				Language:  targetLanguage,
 				FileName:  fileName,
 				OriginDir: filepath.Dir(source.Path),
-				Markdown:  file.Markdown(content),
+				Markdown:  file.Markdown(response.Markdown),
 			})
 			mu.Unlock()
 

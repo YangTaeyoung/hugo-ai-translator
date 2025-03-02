@@ -55,9 +55,7 @@ func Test_translator_Translate(t *testing.T) {
 				client: client,
 				cfg: &Config{
 					SourceLanguage: "ko",
-					TargetLanguages: config.LanguageCodes{
-						config.LanguageCodeEnglish, config.LanguageCodeFrench, config.LanguageCodeChinese,
-					},
+					Model:          openai.ChatModelGPT4oMini,
 				},
 			},
 			args: args{
@@ -65,6 +63,9 @@ func Test_translator_Translate(t *testing.T) {
 				source: file.ParsedMarkdownFile{
 					Markdown: file.Markdown(testPostingMd),
 					Path:     "path/to/file",
+					TargetLanguages: config.LanguageCodes{
+						config.LanguageCodeEnglish, config.LanguageCodeFrench, config.LanguageCodeChinese,
+					},
 				},
 			},
 			want:    3,
