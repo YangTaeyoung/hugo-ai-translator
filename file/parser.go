@@ -17,6 +17,8 @@ import (
 
 type Markdown string
 
+type Depth int
+
 func (m Markdown) String() string {
 	return string(m)
 }
@@ -31,7 +33,7 @@ type ParsedMarkdownFiles []ParsedMarkdownFile
 
 type ParserConfig struct {
 	ContentDir      string
-	TranslatedPaths []string
+	ScanDepth       *int
 	IgnoreRules     []string
 	TargetLanguages config.LanguageCodes
 	TargetPathRule  string
@@ -45,6 +47,7 @@ type TranslateFrontMatters []TranslateFrontMatter
 
 type Parser interface {
 	Parse(ctx context.Context) (ParsedMarkdownFiles, error)
+	Simple(ctx context.Context) (ParsedMarkdownFiles, error)
 }
 
 type parser struct {
@@ -56,6 +59,42 @@ func NewParser(cfg ParserConfig) Parser {
 		cfg: cfg,
 	}
 }
+
+func (p parser) Simple(ctx context.Context) (ParsedMarkdownFiles, error) {
+	// ContentDir에 있는 모든 .md파일을 읽어서 반환
+	var markdownFiles ParsedMarkdownFiles
+
+	paths, err := os.ReadDir(p.cfg.ContentDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, path := range paths {
+		var file []byte
+
+		if path.IsDir() {
+			continue
+		}
+
+		if !strings.HasSuffix(path.Name(), ".md") {
+			continue
+		}
+
+		file, err = os.ReadFile(filepath.Join(p.cfg.ContentDir, path.Name()))
+		if err != nil {
+			return nil, err
+		}
+
+		markdownFiles = append(markdownFiles, ParsedMarkdownFile{
+			Path:            path.Name(),
+			Markdown:        Markdown(file),
+			TargetLanguages: p.cfg.TargetLanguages,
+		})
+	}
+
+	return markdownFiles, nil
+}
+
 func (p parser) listMarkdownFilePaths() ([]string, error) {
 	var results []string
 

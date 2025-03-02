@@ -139,7 +139,8 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 
 			content := res.Choices[0].Message.Content
 			content = strings.Trim(content, " ")
-			content = strings.TrimPrefix(content, "```markdown")
+			content = strings.TrimPrefix(content, "```\n")
+			content = strings.TrimPrefix(content, "```markdown\n")
 			content = strings.TrimSuffix(content, "\n")
 			content = strings.Trim(content, "```")
 

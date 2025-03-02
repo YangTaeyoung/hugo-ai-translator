@@ -27,7 +27,8 @@ func NewCommand() *cli.Command {
 		},
 		Commands: []*cli.Command{
 			{
-				Name: "configure",
+				Name:        "configure",
+				Description: "configure hugo-ai-translator",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "config",
@@ -48,6 +49,39 @@ func NewCommand() *cli.Command {
 					},
 				},
 				Action: ConfigureAction,
+			},
+			{
+				Name:        "simple",
+				Description: "translate all markdown files in current directory\n",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "config",
+						Usage:   "config file path",
+						Aliases: []string{"c"},
+						Value:   "~/.hugo_ai_translator/config.yaml",
+					},
+					&cli.StringFlag{
+						Name:    "source-language",
+						Usage:   "source language code (if don't set, it follows the config file's source language)",
+						Aliases: []string{"s"},
+					},
+					&cli.StringSliceFlag{
+						Name:    "target-languages",
+						Usage:   "destination language codes (if don't set, it follows the config file's target languages)",
+						Aliases: []string{"t"},
+					},
+					&cli.StringFlag{
+						Name:    "model",
+						Usage:   "OpenAI model name. you can check available models in https://platform.openai.com/docs/models#current-model-aliases \n(if don't set, follow the config file's model)",
+						Aliases: []string{"m"},
+					},
+					&cli.StringFlag{
+						Name:    "api-key",
+						Usage:   "OpenAI API Key (if don't set, it follows the config file's api key)",
+						Aliases: []string{"k"},
+					},
+				},
+				Action: SimpleTranslateAction,
 			},
 		},
 		Action: TranslateAction,
