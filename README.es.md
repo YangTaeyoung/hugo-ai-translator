@@ -37,7 +37,7 @@ Esta traducción fue realizada a través de `hugo-ai-translator`.
 Se puede instalar con un simple comando.
 
 ```shell
-go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.0
+go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.1
 ```
 
 # Configuración

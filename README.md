@@ -34,7 +34,7 @@
 간단한 명령어로 설치할 수 있습니다.
 
 ```shell
-go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.0
+go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.1
 ```
 
 # Configure

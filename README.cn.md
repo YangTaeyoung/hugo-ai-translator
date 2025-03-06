@@ -36,7 +36,7 @@ translated: true
 可以通过简单的命令进行安装。
 
 ```shell
-go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.0
+go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.1
 ```
 
 # Configure

@@ -37,7 +37,7 @@ translated: true
 簡単なコマンドでインストールできます。
 
 ```shell
-go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.0
+go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.1
 ```
 
 # Configure
