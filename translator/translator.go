@@ -12,6 +12,7 @@ import (
 
 	"github.com/YangTaeyoung/hugo-ai-translator/config"
 	"github.com/YangTaeyoung/hugo-ai-translator/file"
+	"github.com/YangTaeyoung/hugo-ai-translator/llm"
 	"github.com/openai/openai-go"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -25,6 +26,8 @@ var (
 	promptMd string
 )
 
+var MaxWorkers = 4
+
 var (
 	ErrorEmptyResult = errors.New("empty result")
 )
@@ -36,54 +39,34 @@ type Config struct {
 }
 
 type Translator interface {
-	Translate(ctx context.Context, source file.ParsedMarkdownFile) (Results, error)
+	Translate(ctx context.Context, source file.ParsedMarkdownFile) (file.MarkdownFiles, error)
 }
 
 type translator struct {
-	client *openai.Client
+	client llm.OpenAIClient
 	cfg    *Config
 }
 
-type promptProps struct {
-	SourceLanguage config.LanguageCode
-	TargetLanguage config.LanguageCode
-	Source         string
-}
-
-type Result struct {
-	Language  config.LanguageCode
-	FileName  string
-	OriginDir string
-	Markdown  file.Markdown
-}
-
-type Results []Result
-
-func (r Results) MarkdownFiles() file.MarkdownFiles {
-	var files file.MarkdownFiles
-
-	for _, result := range r {
-		files = append(files, file.MarkdownFile{
-			FileName:  result.FileName,
-			OriginDir: result.OriginDir,
-			Language:  result.Language,
-			Content:   result.Markdown,
-		})
+func New(client llm.OpenAIClient, cfg Config) Translator {
+	return &translator{
+		client: client,
+		cfg:    &cfg,
 	}
-
-	return files
 }
 
-func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFile) (Results, error) {
+func (t *translator) Translate(ctx context.Context, source file.ParsedMarkdownFile) (file.MarkdownFiles, error) {
 	var (
-		translated Results
+		translated file.MarkdownFiles
 		mu         sync.Mutex
 		err        error
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
-	for _, targetLanguage := range source.TargetLanguages {
-		targetLanguage := targetLanguage
+	g.SetLimit(MaxWorkers)
+
+	for _, language := range source.TargetLanguages {
+		targetLanguage := language
+
 		g.Go(func() error {
 			var (
 				fileName string
@@ -99,9 +82,13 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 
 			var buf bytes.Buffer
 
-			if err = tmpl.Execute(&buf, promptProps{
-				SourceLanguage: t.cfg.SourceLanguage,
-				TargetLanguage: targetLanguage,
+			if err = tmpl.Execute(&buf, struct {
+				SourceLanguage string
+				TargetLanguage string
+				Source         string
+			}{
+				SourceLanguage: t.cfg.SourceLanguage.Name().String(),
+				TargetLanguage: targetLanguage.Name().String(),
 				Source:         source.Markdown.String(),
 			}); err != nil {
 				return err
@@ -116,7 +103,7 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 				Strict:      openai.Bool(true),
 			}
 
-			res, err = t.client.Chat.Completions.New(gctx, openai.ChatCompletionNewParams{
+			res, err = t.client.New(gctx, openai.ChatCompletionNewParams{
 				Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 					openai.ChatCompletionDeveloperMessageParam{
 						Role: openai.F(openai.ChatCompletionDeveloperMessageParamRoleDeveloper),
@@ -160,11 +147,11 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 			}
 
 			mu.Lock()
-			translated = append(translated, Result{
+			translated = append(translated, file.MarkdownFile{
 				Language:  targetLanguage,
 				FileName:  fileName,
 				OriginDir: filepath.Dir(source.Path),
-				Markdown:  file.Markdown(response.Markdown),
+				Content:   file.Markdown(response.Markdown),
 			})
 			mu.Unlock()
 
@@ -178,11 +165,4 @@ func (t translator) Translate(ctx context.Context, source file.ParsedMarkdownFil
 	}
 
 	return translated, nil
-}
-
-func New(client *openai.Client, cfg Config) Translator {
-	return &translator{
-		client: client,
-		cfg:    &cfg,
-	}
 }

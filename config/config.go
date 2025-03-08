@@ -32,6 +32,10 @@ func (l LanguageCodes) Strings() []string {
 
 type Language string
 
+func (l Language) String() string {
+	return string(l)
+}
+
 const (
 	LanguageCodeKorean   LanguageCode = "ko"
 	LanguageCodeEnglish  LanguageCode = "en"

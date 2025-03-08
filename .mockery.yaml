@@ -1,0 +1,29 @@
+with-expecter: true
+packages:
+  github.com/YangTaeyoung/hugo-ai-translator/llm:
+    config:
+      all: true
+      outpkg: mocks
+      mockname: "{{.InterfaceName}}"
+      dir: mocks
+      filename: "{{.InterfaceName}}.go"
+      disable-version-string: true
+
+  github.com/YangTaeyoung/hugo-ai-translator/file:
+    config:
+      all: true
+      recursive: true
+      outpkg: mocks
+      mockname: "{{.InterfaceName}}"
+      dir: mocks
+      filename: "{{.InterfaceName}}.go"
+      disable-version-string: true
+  github.com/YangTaeyoung/hugo-ai-translator/translator:
+    config:
+      all: true
+      recursive: true
+      outpkg: mocks
+      mockname: "{{.InterfaceName}}"
+      dir: mocks
+      filename: "{{.InterfaceName}}.go"
+      disable-version-string: true
