@@ -1,11 +1,15 @@
 ---
 translated: true
 ---
-# ¡Hola Traductor de AI de Hugo! 👋
+[![Go Test Action](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml/badge.svg)](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml)
+![GitHub Release](https://img.shields.io/github/v/release/YangTaeyoung/hugo-ai-translator)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Este documento es un traductor de AI que traduce contenido almacenado en blogs de Hugo.
+# ¡Hola Hugo AI Translator! 👋
 
-Utiliza el modelo de [OpenAI](https://openai.com), y los resultados traducidos se guardan de acuerdo con las reglas de nomenclatura especificadas por el usuario.
+Este documento es un traductor AI que traduce el contenido almacenado en el blog de Hugo.
+
+Se utiliza el modelo de [OpenAI](https://openai.com) y los resultados traducidos se guardan según las reglas de nomenclatura especificadas por el usuario.
 
 # Traducción
 
@@ -22,39 +26,39 @@ Esta traducción fue realizada a través de `hugo-ai-translator`.
 
 # Idiomas Soportados
 
-| Idioma    | Código |
-|-----------|-------|
-| 한국어     | `ko`  |
-| English   | `en`  |
-| 日本語     | `ja`  |
-| 中文      | `cn`  |
-| Español   | `es`  |
-| Français  | `fr`  |
-| Deutsch   | `de`  |
+| Idioma   | Código |
+|----------|-------|
+| 한국어      | `ko`  |
+| English  | `en`  |
+| 日本語      | `ja`  |
+| 中文       | `cn`  |
+| Español  | `es`  |
+| Français | `fr`  |
+| Deutsch  | `de`  |
 
 # Instalación
 
 Se puede instalar con un simple comando.
 
 ```shell
-go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.1
+go install github.com/YangTaeyoung/hugo-ai-translator@v1.1.0
 ```
 
-# Configuración
+# Configuraciones
 
-Se puede configurar hugo-ai-translator ejecutando el siguiente comando.
+Se pueden realizar configuraciones para ejecutar hugo-ai-translator mediante el siguiente comando.
 
 ```shell
 hugo-ai-translator configure
 ```
 
-Por favor, consulta el documento de [configuración](docs/configure.es.md) para obtener más detalles sobre la configuración.
+Para más detalles sobre la configuración, consulta el documento de [configuración](docs/configure.md).
 
 # Uso
 
 ## Traducción Simple
 
-Se pueden traducir todos los markdown en la carpeta actual con una regla simple.
+Puedes traducir todos los markdown en la carpeta actual utilizando reglas simples.
 
 ### Inicio Rápido
 
@@ -63,20 +67,20 @@ cd path/to/markdown-directory
 
 hugo-ai-translator simple --source-language en \
   --target-language ko \
-  --target-language ja \
-  --model gpt-4 \
-  --api-key {clave de API de open ai}
-``` 
+  --target-languages all \
+  --model gpt-4o-mini \
+  --api-key {open ai api key}
+```
 
 ## Traducción Basada en Reglas
 
 Se puede traducir aplicando reglas específicas.
 
-Primero se debe ejecutar [Configurar](docs/configure.md), y la traducción se llevará a cabo de acuerdo con las reglas configuradas.
+Es necesario realizar [Configurar](docs/configure.md) previamente y la traducción se realizará según las reglas establecidas.
 
 ### Inicio Rápido
 
-Si ya hay configuración, se puede traducir sin utilizar otras opciones de la siguiente manera.
+Si hay configuraciones, se puede traducir sin usar otras opciones como a continuación:
 
 ```shell
 hugo-ai-translator

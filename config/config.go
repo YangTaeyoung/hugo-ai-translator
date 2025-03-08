@@ -6,6 +6,7 @@ import (
 
 	"github.com/openai/openai-go"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v3"
 )
@@ -201,6 +202,10 @@ func Simple(cmd *cli.Command) (*Config, error) {
 	cfg.OpenAI.Model = model
 	cfg.Translator.Source.SourceLanguage = LanguageCode(sourceLanguage)
 	for _, lang := range targetLanguages {
+		if lang == "all" {
+			cfg.Translator.Target.TargetLanguages = lo.Without(lo.Keys(LanguageCodeToLanguage), cfg.Translator.Source.SourceLanguage)
+			break
+		}
 		cfg.Translator.Target.TargetLanguages = append(cfg.Translator.Target.TargetLanguages, LanguageCode(lang))
 	}
 	cfg.Translator.ContentDir = currentDir

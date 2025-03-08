@@ -1,15 +1,19 @@
 ---
 translated: true
 ---
-# Hello Hugo AI Translator! 👋
+[![Go Test Action](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml/badge.svg)](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml)
+![GitHub Release](https://img.shields.io/github/v/release/YangTaeyoung/hugo-ai-translator)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-この文書はHugoブログに保存されたコンテンツを翻訳するAI翻訳機です。
+# こんにちはHugo AI翻訳者! 👋
+
+この文書はHugoブログに保存されたコンテンツを翻訳するAI翻訳ツールです。
 
 [OpenAI](https://openai.com)のモデルを使用しており、翻訳結果はユーザーが指定した命名ルールに従って保存されます。
 
-# Translation
+# 翻訳
 
-この翻訳は`hugo-ai-translator`を通じて行われました。
+この翻訳文は`hugo-ai-translator`を通じて翻訳されました。
 
 - [한국어](/README.md)
 - [English](/README.en.md)
@@ -20,63 +24,63 @@ translated: true
 - [Deutsch](/README.de.md)
 
 
-# Supported Languages
+# 対応言語
 
-| Language | Code |
+| 言語     | コード |
 |----------|------|
-| 한국어      | `ko` |
+| 한국어     | `ko` |
 | English  | `en` |
-| 日本語      | `ja` |
-| 中文       | `cn` |
+| 日本語     | `ja` |
+| 中文      | `cn` |
 | Español  | `es` |
 | Français | `fr` |
 | Deutsch  | `de` |
 
-# Installation
+# インストール
 
 簡単なコマンドでインストールできます。
 
 ```shell
-go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.1
+go install github.com/YangTaeyoung/hugo-ai-translator@v1.1.0
 ```
 
-# Configure
+# 設定
 
-次のコマンドを使用してhugo-ai-translatorを実行するために設定できます。
+次のコマンドでhugo-ai-translatorを起動するための設定ができます。
 
 ```shell
 hugo-ai-translator configure
 ```
 
-設定についての詳細は[設定](docs/configure.md)文書を参照してください。
+設定についての詳細は[設定](docs/configure.md)の文書を参照してください。
 
-# Usage
+# 使用法
 
-## Simple Translation
+## 単純な翻訳
 
-現在のフォルダー内にあるすべてのMarkdownを単純なルールで翻訳できます。
+現在のフォルダ内のすべてのマークダウンを単純なルールで翻訳できます。
 
-### Quick Start
+### クイックスタート
 
 ```shell
 cd path/to/markdown-directory
 
 hugo-ai-translator simple --source-language en \
   --target-language ko \
-  --target-language ja \
-  --model gpt-4 \
+  --target-languages all \
+  --model gpt-4o-mini \
   --api-key {open ai api key}
 ``` 
 
-## Rull Base Translation
+## ルールベース翻訳
 
 特定のルールを適用して翻訳できます。
 
-[Configure](docs/configure.ja.md)が先行する必要があり、設定されたルールに従って翻訳が進められます。
+[Configure](docs/configure.md)が先行される必要があり、設定されたルールに従って翻訳が行われます。
 
-### Quick Start
+### クイックスタート
 
-設定があれば、以下のように他のオプションを使わずに翻訳ができます。
+設定があれば、以下のように他のオプションを使用せずに翻訳できます。
 
 ```shell
 hugo-ai-translator

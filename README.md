@@ -38,7 +38,7 @@
 간단한 명령어로 설치할 수 있습니다.
 
 ```shell
-go install github.com/YangTaeyoung/hugo-ai-translator@v1.0.1
+go install github.com/YangTaeyoung/hugo-ai-translator@v1.1.0
 ```
 
 # Configure
@@ -64,7 +64,7 @@ cd path/to/markdown-directory
 
 hugo-ai-translator simple --source-language en \
   --target-language ko \
-  --target-language ja \
+  --target-languages all \
   --model gpt-4o-mini \
   --api-key {open ai api key}
 ``` 
