@@ -6,6 +6,7 @@ import (
 
 	"github.com/openai/openai-go"
 	"github.com/pkg/errors"
+	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v3"
 )
 
@@ -54,6 +55,10 @@ const (
 	LanguageSpanish  Language = "Spanish"
 	LanguageFrench   Language = "French"
 	LanguageGerman   Language = "German"
+)
+
+const (
+	SimpleTargetPathRule = "{origin}/{fileName}.{language}.md"
 )
 
 type LanguageMap map[LanguageCode]Language
@@ -138,4 +143,86 @@ func New(configPath string) (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+func (c *Config) validateSimple() error {
+	if c.OpenAI.ApiKey == "" {
+		return errors.New("api key is required")
+	}
+
+	if c.OpenAI.Model == "" {
+		return errors.New("model is required")
+	}
+
+	if c.Translator.Source.SourceLanguage == "" {
+		return errors.New("source language is required")
+	}
+
+	if len(c.Translator.Target.TargetLanguages) == 0 {
+		return errors.New("target languages are required")
+	}
+
+	return nil
+}
+
+func bindOriginConfig(cfg *Config, originConfig *Config) {
+	if cfg.OpenAI.ApiKey == "" {
+		cfg.OpenAI.ApiKey = originConfig.OpenAI.ApiKey
+	}
+
+	if cfg.OpenAI.Model == "" {
+		cfg.OpenAI.Model = originConfig.OpenAI.Model
+	}
+
+	if cfg.Translator.Source.SourceLanguage == "" {
+		cfg.Translator.Source.SourceLanguage = originConfig.Translator.Source.SourceLanguage
+	}
+
+	if len(cfg.Translator.Target.TargetLanguages) == 0 {
+		cfg.Translator.Target.TargetLanguages = originConfig.Translator.Target.TargetLanguages
+	}
+}
+
+func Simple(cmd *cli.Command) (*Config, error) {
+	var (
+		cfg             Config
+		cfgPath         = cmd.String("config")
+		apiKey          = cmd.String("api-key")
+		model           = cmd.String("model")
+		sourceLanguage  = cmd.String("source-language")
+		targetLanguages = cmd.StringSlice("target-languages")
+	)
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.OpenAI.ApiKey = apiKey
+	cfg.OpenAI.Model = model
+	cfg.Translator.Source.SourceLanguage = LanguageCode(sourceLanguage)
+	for _, lang := range targetLanguages {
+		cfg.Translator.Target.TargetLanguages = append(cfg.Translator.Target.TargetLanguages, LanguageCode(lang))
+	}
+	cfg.Translator.ContentDir = currentDir
+	cfg.Translator.Target.TargetPathRule = SimpleTargetPathRule
+
+	if err = cfg.validateSimple(); err != nil && cfgPath == "" {
+		return nil, err
+	} else if err != nil {
+		var (
+			originConfig *Config
+		)
+		originConfig, err = New(cfgPath)
+		if err != nil {
+			return nil, err
+		}
+
+		bindOriginConfig(&cfg, originConfig)
+	}
+
+	if err = cfg.validateSimple(); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }

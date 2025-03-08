@@ -12,12 +12,9 @@ import (
 	"github.com/YangTaeyoung/hugo-ai-translator/config"
 	"github.com/YangTaeyoung/hugo-ai-translator/environment"
 	"github.com/YangTaeyoung/hugo-ai-translator/file"
-	"github.com/YangTaeyoung/hugo-ai-translator/llm"
-	"github.com/YangTaeyoung/hugo-ai-translator/translator"
 	"github.com/k0kubun/go-ansi"
 	"github.com/manifoldco/promptui"
 	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
 	"github.com/pkg/errors"
 	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli/v3"
@@ -227,73 +224,14 @@ func DebugModeAction(ctx context.Context, _ *cli.Command, debug bool) error {
 }
 
 func SimpleTranslateAction(ctx context.Context, cmd *cli.Command) error {
-	var (
-		sourceLanguage  config.LanguageCode
-		targetLanguages config.LanguageCodes
-		cfg             *config.Config
-		cfgPath         = cmd.String("config")
-		apiKey          = cmd.String("api-key")
-		model           = cmd.String("model")
-	)
-
-	currentDir, err := os.Getwd()
+	cfg, err := config.Simple(cmd)
 	if err != nil {
 		return err
 	}
 
-	if cmd.String("source-language") == "" {
-		if cfg, err = config.New(cfgPath); err != nil {
-			return err
-		}
+	env := environment.New(cfg)
 
-		sourceLanguage = cfg.Translator.Source.SourceLanguage
-	} else {
-		sourceLanguage = config.LanguageCode(cmd.String("source-language"))
-	}
-
-	if len(cmd.StringSlice("target-languages")) == 0 {
-		if cfg, err = config.New(cfgPath); err != nil {
-			return err
-		}
-		targetLanguages = cfg.Translator.Target.TargetLanguages
-	} else {
-		for _, lang := range cmd.StringSlice("target-languages") {
-			targetLanguages = append(targetLanguages, config.LanguageCode(lang))
-		}
-	}
-	if apiKey == "" {
-		if cfg, err = config.New(cfgPath); err != nil {
-			return err
-		}
-		apiKey = cfg.OpenAI.ApiKey
-	}
-	if model == "" {
-		if cfg, err = config.New(cfgPath); err != nil {
-			return err
-		}
-		model = cfg.OpenAI.Model
-	}
-	slog.InfoContext(ctx, "config parsed",
-		"sourceLanguage", sourceLanguage,
-		"targetLanguages", targetLanguages,
-		"apiKey", apiKey,
-		"model", model,
-	)
-
-	client := llm.NewOpenAIClient(openai.NewClient(option.WithAPIKey(apiKey)))
-
-	t := translator.New(client, translator.Config{
-		SourceLanguage:  sourceLanguage,
-		TargetLanguages: targetLanguages,
-		Model:           model,
-	})
-
-	parser := file.NewParser(file.ParserConfig{
-		ContentDir:      currentDir,
-		TargetLanguages: targetLanguages,
-	})
-
-	parsedMarkdownFiles, err := parser.Simple(ctx)
+	parsedMarkdownFiles, err := env.Parser.Simple(ctx)
 	if err != nil {
 		return err
 	}
@@ -302,50 +240,28 @@ func SimpleTranslateAction(ctx context.Context, cmd *cli.Command) error {
 		"count", len(parsedMarkdownFiles),
 	)
 
-	bar := progressbar.NewOptions(len(parsedMarkdownFiles),
-		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("Translating ..."),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar := progressbar.NewOptions(len(parsedMarkdownFiles), progressbarOpts...)
 
-	var results file.MarkdownFiles
 	for _, markdownFile := range parsedMarkdownFiles {
 		var translated file.MarkdownFiles
 
 		bar.Describe(fmt.Sprintf("Translating %s ...", markdownFile.Path))
 
-		translated, err = t.Translate(ctx, markdownFile)
+		translated, err = env.Translator.Translate(ctx, markdownFile)
 		if err != nil {
 			return err
 		}
 
-		results = append(results, translated...)
+		if err = env.Writer.Write(ctx, translated); err != nil {
+			return err
+		}
 
 		if err = bar.Add(1); err != nil {
 			return errors.Wrap(err, "failed to update progress bar")
 		}
 	}
 
-	w := file.NewWriter(file.WriterConfig{
-		ContentDir:     currentDir,
-		TargetPathRule: "{fileName}.{language}.md",
-	})
-
-	if results == nil {
-		return errors.New("no results")
-	}
-
-	if err = w.Write(ctx, results); err != nil {
-		return err
-	}
-	slog.InfoContext(ctx, "markdown files written", "count", len(results))
+	slog.InfoContext(ctx, "all markdown files written")
 
 	return nil
 }

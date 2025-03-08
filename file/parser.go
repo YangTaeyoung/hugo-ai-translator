@@ -193,9 +193,8 @@ func (p parser) Parse(ctx context.Context) (ParsedMarkdownFiles, error) {
 			}
 
 			targetFilePath := TargetFilePath(p.cfg.TargetPathRule, filepath.Dir(originMarkdownFile.Path), lang.String(), fileName)
-			if strings.HasPrefix(targetFilePath, "./") {
-				targetFilePath = targetFilePath[2:]
-			}
+			targetFilePath = strings.TrimPrefix(targetFilePath, "./")
+
 			slog.Debug("output path for translated markdown", "path", targetFilePath)
 
 			if _, ok := translatedMap[targetFilePath]; ok {

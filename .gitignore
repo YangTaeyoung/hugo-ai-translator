@@ -170,3 +170,5 @@ Temporary Items
 
 /mocks/**
 /test_results.json
+
+/.idea/
