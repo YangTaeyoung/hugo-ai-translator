@@ -61,7 +61,7 @@ cd path/to/markdown-directory
 hugo-ai-translator simple --source-language en \
   --target-language ko \
   --target-language ja \
-  --model gpt-4 \
+  --model gpt-4o-mini \
   --api-key {open ai api key}
 ``` 
 
