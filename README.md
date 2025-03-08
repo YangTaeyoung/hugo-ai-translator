@@ -1,3 +1,5 @@
+[![Go Test Action](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml/badge.svg)](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml)
+
 # Hello Hugo AI Translator! 👋
 
 해당 문서는 Hugo 블로그에 저장된 컨텐트를 번역하는 AI 번역기입니다.
