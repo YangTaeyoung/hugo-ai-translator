@@ -1,0 +1,17 @@
+openai:
+  model: gpt-4o-mini
+  api_key: test-api-key
+translator:
+  content_dir: ~/hugo-home/content
+  source:
+    source_language: ko
+    ignore_rules: [
+      "some/ignore/path",
+    ]
+  target:
+    target_languages:
+      - en
+      - ja
+      - fr
+      - de
+    target_path_rule: '{origin}/{fileName}.{language}.md'
