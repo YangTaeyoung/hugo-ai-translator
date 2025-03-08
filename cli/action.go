@@ -12,6 +12,7 @@ import (
 	"github.com/YangTaeyoung/hugo-ai-translator/config"
 	"github.com/YangTaeyoung/hugo-ai-translator/environment"
 	"github.com/YangTaeyoung/hugo-ai-translator/file"
+	"github.com/YangTaeyoung/hugo-ai-translator/llm"
 	"github.com/YangTaeyoung/hugo-ai-translator/translator"
 	"github.com/k0kubun/go-ansi"
 	"github.com/manifoldco/promptui"
@@ -65,6 +66,20 @@ var ChatModels = []string{
 	openai.ChatModelGPT3_5Turbo0125,
 }
 
+var progressbarOpts = []progressbar.Option{
+	progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+	progressbar.OptionEnableColorCodes(true),
+	progressbar.OptionSetWidth(15),
+	progressbar.OptionSetDescription("Translating ..."),
+	progressbar.OptionSetTheme(progressbar.Theme{
+		Saucer:        "[green]=[reset]",
+		SaucerHead:    "[green]>[reset]",
+		SaucerPadding: " ",
+		BarStart:      "[",
+		BarEnd:        "]",
+	}),
+}
+
 func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 	var (
 		cfgPath = cmd.String("config")
@@ -79,54 +94,25 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 	env := environment.New(cfg)
 	slog.InfoContext(ctx, "environment created")
 
-	p := file.NewParser(file.ParserConfig{
-		ContentDir:      cfg.Translator.ContentDir,
-		TargetLanguages: cfg.Translator.Target.TargetLanguages,
-		TargetPathRule:  cfg.Translator.Target.TargetPathRule,
-		IgnoreRules:     cfg.Translator.Source.IgnoreRules,
-	})
-
-	markdownFiles, err := p.Parse(ctx)
+	markdownFiles, err := env.Parser.Parse(ctx)
 	if err != nil {
 		return err
 	}
 	slog.InfoContext(ctx, "markdown files parsed", "count", len(markdownFiles))
 
-	t := translator.New(env.Client, translator.Config{
-		SourceLanguage:  cfg.Translator.Source.SourceLanguage,
-		TargetLanguages: cfg.Translator.Target.TargetLanguages,
-		Model:           cfg.OpenAI.Model,
-	})
-
-	w := file.NewWriter(file.WriterConfig{
-		ContentDir:     cfg.Translator.ContentDir,
-		TargetPathRule: cfg.Translator.Target.TargetPathRule,
-	})
-
-	bar := progressbar.NewOptions(len(markdownFiles),
-		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("Translating ..."),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar := progressbar.NewOptions(len(markdownFiles), progressbarOpts...)
 
 	for _, markdownFile := range markdownFiles {
-		var results translator.Results
+		var results file.MarkdownFiles
 
 		bar.Describe(fmt.Sprintf("Translating %s ...", markdownFile.Path))
 
-		results, err = t.Translate(ctx, markdownFile)
+		results, err = env.Translator.Translate(ctx, markdownFile)
 		if err != nil {
 			return err
 		}
 
-		if err = w.Write(ctx, results.MarkdownFiles()); err != nil {
+		if err = env.Writer.Write(ctx, results); err != nil {
 			return err
 		}
 
@@ -244,10 +230,10 @@ func SimpleTranslateAction(ctx context.Context, cmd *cli.Command) error {
 	var (
 		sourceLanguage  config.LanguageCode
 		targetLanguages config.LanguageCodes
+		cfg             *config.Config
 		cfgPath         = cmd.String("config")
 		apiKey          = cmd.String("api-key")
 		model           = cmd.String("model")
-		cfg             *config.Config
 	)
 
 	currentDir, err := os.Getwd()
@@ -294,7 +280,7 @@ func SimpleTranslateAction(ctx context.Context, cmd *cli.Command) error {
 		"model", model,
 	)
 
-	client := openai.NewClient(option.WithAPIKey(apiKey))
+	client := llm.NewOpenAIClient(openai.NewClient(option.WithAPIKey(apiKey)))
 
 	t := translator.New(client, translator.Config{
 		SourceLanguage:  sourceLanguage,
@@ -329,9 +315,9 @@ func SimpleTranslateAction(ctx context.Context, cmd *cli.Command) error {
 			BarEnd:        "]",
 		}))
 
-	var results translator.Results
+	var results file.MarkdownFiles
 	for _, markdownFile := range parsedMarkdownFiles {
-		var translated translator.Results
+		var translated file.MarkdownFiles
 
 		bar.Describe(fmt.Sprintf("Translating %s ...", markdownFile.Path))
 
@@ -356,7 +342,7 @@ func SimpleTranslateAction(ctx context.Context, cmd *cli.Command) error {
 		return errors.New("no results")
 	}
 
-	if err = w.Write(ctx, results.MarkdownFiles()); err != nil {
+	if err = w.Write(ctx, results); err != nil {
 		return err
 	}
 	slog.InfoContext(ctx, "markdown files written", "count", len(results))
