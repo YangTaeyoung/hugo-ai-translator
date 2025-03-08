@@ -59,7 +59,7 @@ func NewParser(cfg ParserConfig) Parser {
 	}
 }
 
-func (p parser) Simple(ctx context.Context) (ParsedMarkdownFiles, error) {
+func (p parser) Simple(_ context.Context) (ParsedMarkdownFiles, error) {
 	// ContentDir에 있는 모든 .md파일을 읽어서 반환
 	var markdownFiles ParsedMarkdownFiles
 
