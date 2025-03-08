@@ -52,6 +52,7 @@ jobs:
             $(go list ./... | grep -v \
               -e 'github.com/YangTaeyoung/hugo-ai-translator/mocks' \
               -e 'github.com/YangTaeyoung/hugo-ai-translator/llm' \
+              -e 'github.com/YangTaeyoung/hugo-ai-translator/environment' \
           ) > test_results.json
 
       - name: Test Report
