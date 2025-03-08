@@ -198,8 +198,7 @@ the translated file saved in:
 - ~/hugo_root/content/some-posting.md.en.md
 - ~/hugo_root/content/some-posting.md.fr.md
 - ~/hugo_root/content/some-posting2/index.en.md
-- ~/hugo_root/content/some-posting2/index.fr.md
-`
+- ~/hugo_root/content/some-posting2/index.fr.md`
 
 func targetPathRuleStep(cfg *config.Config) error {
 	var (

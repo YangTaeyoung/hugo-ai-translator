@@ -1,0 +1,88 @@
+name: Go Test Action
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.24
+
+      - name: Cache Go binaries
+        id: cache-mockery-bin
+        uses: actions/cache@v4
+        with:
+          key: ${{ github.workflow }}
+          path: ~/go/bin
+
+
+      - name: Install Mockery
+        if: steps.cache-mockery-bin.outputs.cache-hit != 'true'
+        run: go install github.com/vektra/mockery/v2@v2.53.0
+
+      - name: Mockery
+        run: mockery
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Run tests
+        id: go-test
+        run: |
+          go test -short -json \
+            -coverprofile=coverage.out \
+            $(go list ./... | grep -v \
+              -e 'github.com/YangTaeyoung/hugo-ai-translator/mocks' \
+              -e 'github.com/YangTaeyoung/hugo-ai-translator/llm' \
+          ) > test_results.json
+
+      - name: Test Report
+        if: always()
+        uses: robherley/go-test-action@v0
+        with:
+          fromJSONFile: 'test_results.json'
+
+      - name: Calculate Coverage
+        id: coverage
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}')
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+
+      - name: Convert Coverage HTML
+        run: go tool cover -html=coverage.out -o coverage.html
+
+      - name: Upload coverage HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.html
+          if-no-files-found: 'warn'
+
+      - name: PR Comment
+        if: always() && github.event_name == 'pull_request'
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: |
+            ${{ steps.go-test.outcome == 'success' && '![image](https://img.shields.io/badge/testing-success-green)' || '![image](https://img.shields.io/badge/testing-failure-red)' }}
+            
+            **Test Coverage:** ${{ steps.coverage.outputs.coverage }}
+            
+            **📃 Report**: https://github.com/${{github.repository}}/actions/runs/${{ github.run_id }}
