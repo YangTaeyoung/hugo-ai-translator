@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"testing"
 
+	"github.com/YangTaeyoung/hugo-ai-translator/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,15 +36,25 @@ func Test_parser_Parse(t *testing.T) {
 					IgnoreRules: []string{
 						"world/**",
 					},
+					TargetLanguages: config.LanguageCodes{
+						config.LanguageCodeEnglish,
+					},
+					TargetPathRule: "{{origin}}/{{filename}}.{{language}}.md",
 				},
 			},
 			want: ParsedMarkdownFiles{
 				{
-					Path:     "hello/bar.md",
+					Path: "hello/bar.md",
+					TargetLanguages: config.LanguageCodes{
+						config.LanguageCodeEnglish,
+					},
 					Markdown: Markdown(barMd),
 				},
 				{
-					Path:     "hello/foo.md",
+					Path: "hello/foo.md",
+					TargetLanguages: config.LanguageCodes{
+						config.LanguageCodeEnglish,
+					},
 					Markdown: Markdown(fooMd),
 				},
 			},

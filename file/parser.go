@@ -33,7 +33,6 @@ type ParsedMarkdownFiles []ParsedMarkdownFile
 
 type ParserConfig struct {
 	ContentDir      string
-	ScanDepth       *int
 	IgnoreRules     []string
 	TargetLanguages config.LanguageCodes
 	TargetPathRule  string
