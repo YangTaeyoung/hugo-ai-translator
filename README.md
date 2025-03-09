@@ -1,7 +1,7 @@
 [![Go Test Action](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml/badge.svg)](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml)
 ![GitHub Release](https://img.shields.io/github/v/release/YangTaeyoung/hugo-ai-translator)
 ![GitHub License](https://img.shields.io/github/license/YangTaeyoung/hugo-ai-translator)
-
+[![Go report](https://goreportcard.com/badge/github.com/YangTaeyoung/hugo-ai-translator)](https://goreportcard.com/report/github.com/YangTaeyoung/hugo-ai-translator)
 
 # Hello Hugo AI Translator! 👋
 
