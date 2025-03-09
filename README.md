@@ -1,6 +1,7 @@
 [![Go Test Action](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml/badge.svg)](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml)
+![GitHub Release](https://img.shields.io/github/v/release/YangTaeyoung/hugo-ai-translator)
 ![GitHub License](https://img.shields.io/github/license/YangTaeyoung/hugo-ai-translator)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 
 # Hello Hugo AI Translator! 👋
 
