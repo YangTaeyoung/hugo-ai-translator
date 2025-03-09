@@ -1,3 +1,5 @@
+![Go Version](https://img.shields.io/badge/Go-1.24-%23007d9c)
+[![GoDoc](https://godoc.org/github.com/YangTaeyoung/hugo-ai-translator?status.svg)](https://pkg.go.dev/github.com/YangTaeyoung/hugo-ai-translator)
 [![Go Test Action](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml/badge.svg)](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml)
 ![GitHub Release](https://img.shields.io/github/v/release/YangTaeyoung/hugo-ai-translator)
 ![GitHub License](https://img.shields.io/github/license/YangTaeyoung/hugo-ai-translator)
