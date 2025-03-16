@@ -14,8 +14,8 @@ func Test_writer_Write(t *testing.T) {
 		cfg WriterConfig
 	}
 	type args struct {
-		ctx   context.Context
-		files MarkdownFiles
+		ctx  context.Context
+		file MarkdownFile
 	}
 	tests := []struct {
 		name    string
@@ -33,13 +33,11 @@ func Test_writer_Write(t *testing.T) {
 			},
 			args: args{
 				ctx: t.Context(),
-				files: MarkdownFiles{
-					{
-						FileName:  "test",
-						OriginDir: "origin_dir",
-						Language:  config.LanguageCodeKorean,
-						Content:   "# Hello",
-					},
+				file: MarkdownFile{
+					FileName:   "test",
+					OriginDir:  "origin_dir",
+					Language:   config.LanguageCodeKorean,
+					Translated: "# Hello",
 				},
 			},
 			wantErr: false,
@@ -50,7 +48,7 @@ func Test_writer_Write(t *testing.T) {
 			w := writer{
 				cfg: tt.fields.cfg,
 			}
-			err := w.Write(tt.args.ctx, tt.args.files)
+			err := w.Write(tt.args.ctx, tt.args.file)
 			assert.Equalf(t, tt.wantErr, err != nil, "Write() error = %v, wantErr %v", err, tt.wantErr)
 
 			file, err := os.ReadFile("test_writer_content/origin_dir/test.ko.md")

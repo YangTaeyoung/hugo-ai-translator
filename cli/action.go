@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/YangTaeyoung/hugo-ai-translator/config"
 	"github.com/YangTaeyoung/hugo-ai-translator/environment"
-	"github.com/YangTaeyoung/hugo-ai-translator/file"
 	"github.com/k0kubun/go-ansi"
 	"github.com/manifoldco/promptui"
 	"github.com/openai/openai-go"
@@ -100,16 +100,14 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 	bar := progressbar.NewOptions(len(markdownFiles), progressbarOpts...)
 
 	for _, markdownFile := range markdownFiles {
-		var results file.MarkdownFiles
+		bar.Describe(fmt.Sprintf("Translating %s ...", path.Join(markdownFile.OriginDir, markdownFile.FileName+".md")))
 
-		bar.Describe(fmt.Sprintf("Translating %s ...", markdownFile.Path))
-
-		results, err = env.Translator.Translate(ctx, markdownFile)
+		err = env.Translator.Translate(ctx, &markdownFile)
 		if err != nil {
 			return err
 		}
 
-		if err = env.Writer.Write(ctx, results); err != nil {
+		if err = env.Writer.Write(ctx, markdownFile); err != nil {
 			return err
 		}
 
@@ -231,28 +229,26 @@ func SimpleTranslateAction(ctx context.Context, cmd *cli.Command) error {
 
 	env := environment.New(cfg)
 
-	parsedMarkdownFiles, err := env.Parser.Simple(ctx)
+	markdownFiles, err := env.Parser.Simple(ctx)
 	if err != nil {
 		return err
 	}
 
 	slog.InfoContext(ctx, "markdown files parsed",
-		"count", len(parsedMarkdownFiles),
+		"count", len(markdownFiles),
 	)
 
-	bar := progressbar.NewOptions(len(parsedMarkdownFiles), progressbarOpts...)
+	bar := progressbar.NewOptions(len(markdownFiles), progressbarOpts...)
 
-	for _, markdownFile := range parsedMarkdownFiles {
-		var translated file.MarkdownFiles
+	for _, markdownFile := range markdownFiles {
+		bar.Describe(fmt.Sprintf("Translating %s ...", path.Join(markdownFile.OriginDir, markdownFile.FileName+".md")))
 
-		bar.Describe(fmt.Sprintf("Translating %s ...", markdownFile.Path))
-
-		translated, err = env.Translator.Translate(ctx, markdownFile)
+		err = env.Translator.Translate(ctx, &markdownFile)
 		if err != nil {
 			return err
 		}
 
-		if err = env.Writer.Write(ctx, translated); err != nil {
+		if err = env.Writer.Write(ctx, markdownFile); err != nil {
 			return err
 		}
 

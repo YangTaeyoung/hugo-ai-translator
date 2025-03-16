@@ -39,14 +39,14 @@ English
 	}
 	type args struct {
 		ctx    context.Context
-		source file.ParsedMarkdownFile
+		source *file.MarkdownFile
 	}
 	tests := []struct {
 		name       string
 		fields     fields
 		mockClient func() llm.OpenAIClient
 		args       args
-		want       file.MarkdownFiles
+		want       file.Markdown
 		wantErr    bool
 	}{
 		{
@@ -100,22 +100,14 @@ English
 			},
 			args: args{
 				ctx: t.Context(),
-				source: file.ParsedMarkdownFile{
-					Path:     "hello/foo.md",
-					Markdown: "안녕, 세계!",
-					TargetLanguages: config.LanguageCodes{
-						config.LanguageCodeEnglish,
-					},
-				},
-			},
-			want: file.MarkdownFiles{
-				{
+				source: &file.MarkdownFile{
 					FileName:  "foo",
 					OriginDir: "hello",
-					Language:  "en",
-					Content:   "Hello, world!",
+					Content:   "안녕, 세계!",
+					Language:  config.LanguageCodeEnglish,
 				},
 			},
+			want:    "Hello, world!",
 			wantErr: false,
 		},
 		{
@@ -163,15 +155,14 @@ English
 			},
 			args: args{
 				ctx: t.Context(),
-				source: file.ParsedMarkdownFile{
-					Path:     "hello/foo.md",
-					Markdown: "안녕, 세계!",
-					TargetLanguages: config.LanguageCodes{
-						config.LanguageCodeEnglish,
-					},
+				source: &file.MarkdownFile{
+					OriginDir: "hello",
+					FileName:  "foo",
+					Content:   "안녕, 세계!",
+					Language:  config.LanguageCodeEnglish,
 				},
 			},
-			want:    nil,
+			want:    "",
 			wantErr: true,
 		},
 		{
@@ -225,15 +216,14 @@ English
 			},
 			args: args{
 				ctx: t.Context(),
-				source: file.ParsedMarkdownFile{
-					Path:     "hello/foo.md",
-					Markdown: "안녕, 세계!",
-					TargetLanguages: config.LanguageCodes{
-						config.LanguageCodeEnglish,
-					},
+				source: &file.MarkdownFile{
+					FileName:  "foo",
+					OriginDir: "hello",
+					Content:   "안녕, 세계!",
+					Language:  config.LanguageCodeEnglish,
 				},
 			},
-			want:    nil,
+			want:    "",
 			wantErr: true,
 		},
 	}
@@ -243,9 +233,9 @@ English
 				client: tt.mockClient(),
 				cfg:    tt.fields.cfg,
 			}
-			got, err := tr.Translate(tt.args.ctx, tt.args.source)
+			err := tr.Translate(tt.args.ctx, tt.args.source)
 			assert.Equalf(t, tt.wantErr, err != nil, "Translate() error = %v, wantErr %v", err, tt.wantErr)
-			assert.Equalf(t, tt.want, got, "Translate(%v, %v)", tt.args.ctx, tt.args.source)
+			assert.Equalf(t, tt.want, tt.args.source.Translated, "Translate(%v, %v)", tt.args.ctx, tt.args.source)
 		})
 	}
 }

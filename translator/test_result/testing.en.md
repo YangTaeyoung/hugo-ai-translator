@@ -1,19 +1,19 @@
 ---
-title: Understanding the Differences between log.Fatal() and panic() in Golang
+title: Understanding the Difference Between log.Fatal() and panic() in Golang
 type: blog
 date: 2025-02-11
 comments: true
 ---
 
-## "In such cases, it seems better to use `panic()` than `log.Fatal()`"
-I recently heard this feedback while using `log.Fatal()`.
+## "In such cases, I think it's better to use `panic()` than `log.Fatal()"
+Recently, I received feedback saying that it’s better to use `panic()` than `log.Fatal()`.
 
-Huh? Doesn't `log.Fatal()` just log a bit better? I thought.
+Hmm? Isn’t `log.Fatal()` just a better way to log errors? I thought.
 
-Embarrassingly, it wasn't until recently that I clearly understood the differences between `log.Fatal()` and `panic()` in Golang. So, I wanted to take this opportunity to organize it.
+It’s somewhat embarrassing, but it was only recently that I became clearly aware of the difference between `log.Fatal()` and `panic()` in Golang, so I’d like to organize my thoughts on it this time.
 
-## Differences between log.Fatal() and panic()
-Both `log.Fatal()` and `panic()` are functions that terminate the program. Let's see how they work in code:
+## The Difference Between log.Fatal() and panic()
+Both `log.Fatal()` and `panic()` are functions that terminate a program. Let’s explore their behavior through the code.
 
 ```go
 package main
@@ -34,13 +34,13 @@ func main() {
 }
 ```
 
-When you run the above code, you will see the following result:
+When we run the code above, we will see the following result:
 
 ```shell
 2025/02/11 20:02:31 This is a fatal error
 ```
 
-Now, let's look at the code using `panic()`.
+Now, let’s look at a code that uses `panic()`.
 
 ```go
 package main
@@ -60,7 +60,7 @@ func main() {
 }
 ```
 
-When you run the above code, you will see the following result:
+When we run this code, we will see the following result:
 
 ```shell
 panic: This is a panic error
@@ -72,14 +72,14 @@ main.main()
 	/Users/code_kirin/dev/personal/awesomeProject6/main.go:12 +0x30
 ```
 
-From the code, it can be observed that while `log.Fatal()` outputs an error and terminates the program, `panic()` outputs an error, also terminates the program, and additionally prints a stack trace.
+From the above code, we see that `log.Fatal()` prints an error and terminates the program. In contrast, while `panic()` also prints an error and terminates the program, it outputs the stack trace as well.
 
-### Recovering using recover()
-When using `panic()`, the program terminates, but with `recover()`, you can recover without ending the program.
+### Recovering Using recover()
+When using `panic()`, the program terminates. However, by using `recover()`, we can recover without terminating the program.
 
-Ideally, there should be no panics, but developers are prone to mistakes. Therefore, in places like API servers, a middleware is created to `recover()` from `panic()`, preventing the server from unexpectedly crashing.
+Ideally, it would be best if there were no panic at all, but developers are human, and mistakes are bound to happen. For that reason, in API servers and similar environments, middlewares are often created to recover from `panic()`, preventing situations where the server unexpectedly crashes.
 
-To understand the difference clearly, let's first recover from `log.Fatal()`.
+To clearly see the difference, let’s first try to recover from `log.Fatal()`:
 ```go
 package main
 
@@ -105,13 +105,13 @@ func main() {
 }
 ```
 
-When you run the above code, you will see the following result:
+When we run the above code, we will see the following result:
 
 ```shell
 2025/02/11 20:07:49 This is a fatal error
 ```
 
-It remains unrecovered. Now, let's recover from `panic()`.
+It has not recovered. Now, let’s see if we can recover from `panic()`:
 
 ```go
 package main
@@ -137,7 +137,7 @@ func main() {
 }
 ```
 
-When you run the above code, you will see the following result:
+When this code is executed, we receive the following output:
 
 ```shell
 2025/02/11 20:09:51 INFO Recovered from error="This is a panic error"
@@ -147,28 +147,37 @@ runtime/debug.Stack()
 runtime/debug.PrintStack()
 	/opt/homebrew/opt/go/libexec/src/runtime/debug/stack.go:18 +0x1c
 main.main.func1()
-	/Users/code_kir...
+	/Users/code_kirin/dev/personal/awesomeProject6/main.go:16 +0x8c
+panic({0x1004d6560?, 0x1004f4190?})
+	/opt/homebrew/opt/go/libexec/src/runtime/panic.go:785 +0x124
+main.RunWithPanic(...)
+	/Users/code_kirin/dev/personal/awesomeProject6/main.go:9
+main.main()
+	/Users/code_kirin/dev/personal/awesomeProject6/main.go:20 +0x4c
 ```
 
-Although not necessary, `debug.PrintStack()` is used to output a stack trace as seen previously.
+Although it is not required, `debug.PrintStack()` was used to print the stack trace as in the previous case.  
+> Generally, in middleware, logs that include a stack trace are commonly kept for high-severity situations like panic so that developers are quickly notified.
 
-## Purpose
+Using the `debug.Stack()` method allows for direct handling of the stack trace without outputting it to Stderr.
+
+## Use Cases
 `log.Fatal()` internally calls `os.Exit(1)`.
 
-It was created to immediately terminate the program with an error code, making it irrecoverable with `recover()`.
+It was designed to immediately terminate the program with an error code, and thus cannot be recovered with `recover()`.
 
-On the other hand, `panic()` can be recovered with `recover()`.
+On the other hand, `panic()` can be recovered using `recover()`.
 
-If there's a situation where an error should not occur but if it does, it can be recovered from, using `panic()` is better.
+While it shouldn't happen, if a situation arises where recovery is possible, it's better to use `panic()`. 
 
-Generally, for library functions or specific package functions, it is advisable to use `panic()`. (If a server crashes due to a library and cannot be recovered, it can have catastrophic consequences.)
+In general, it’s advisable to use `panic()` in library functions or functions of specific packages. (If the server crashes due to a library and recovery isn’t possible, the outcome could be disastrous.)
 
-For `log.Fatal()`, it is recommended to use it when handling errors finally in the `main()` function.
+It is better to use `log.Fatal()` in cases like the `main()` function when handling errors at the end.
 
-For instance, in the process of loading dependencies if an error occurs that prevents the program from running, the module initializing the dependency returns an `error`, and in the `main()` function, `log.Fatal()` is called.
+For example, if an error occurs during the process of loading dependencies that prevents the program from being executed, the module that initializes those dependencies would return an `error`, and `log.Fatal()` would be called from the `main()` function.
 
-The structure might look like this:
-> This is a simplification. Please use it for reference only.
+Here's a simple structure for reference:
+> This is a simplified version. Just for reference.
 ```go
 package main
 
@@ -187,7 +196,7 @@ func NewDependencies() (*Dependencies, error) {
     redis := redis.NewClient(&redis.Options{
         Addr: "localhost:6379",
     })
-	
+    
     if err = redis.Ping().Err(); err != nil {
         return nil, err
     }
@@ -196,7 +205,6 @@ func NewDependencies() (*Dependencies, error) {
         DB: db,
         redis: redis,
     }, nil
-    
 }
 
 func main() {
@@ -204,15 +212,15 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-	
+    
 	// ...
 }
 ```
 
-## + `log.Panic()`
-In the `log` package, there is a function called `log.Panic()`.
+## + log.Panic()
+The `log` package also includes a function called `log.Panic()`.
 
-It is an extension of `panic()` with logging capabilities. When you run code like this:
+This adds logging functionality to `panic()`; when the following code is executed:
 
 ```go
 package main
@@ -237,10 +245,9 @@ func main() {
 
 	RunWithPanic()
 }
-
 ```
 
-It will output like this:
+It outputs:
 ```shell
 2025/02/11 20:23:17 This is a panic error
 2025/02/11 20:23:17 INFO Recovered from error="This is a panic error"
@@ -254,11 +261,11 @@ main.main.func1()
 panic({0x100ad24e0?, 0x140000100a0?})
 	/opt/homebrew/opt/go/libexec/src/runtime/panic.go:785 +0x124
 log.Panic({0x1400010af20?, 0x0?, 0x68?})
-	/opt/homebrew/op...
+	/opt/homebrew/opt/go/libexec/src/log/log.go:432 +0x60
+main.RunWithPanic(...)
+	/Users/code_kirin/dev/personal/awesomeProject6/main.go:10
+main.main()
+	/Users/code_kirin/dev/personal/awesomeProject6/main.go:21 +0x60
 ```
 
-Compared to `panic()`, it includes logging capabilities. It triggers `panic()` but also logs, distinguishing it from a standard `panic()`.
-
-## Reference
-- https://pkg.go.dev/log#Fatal
-- Code review by the CEO
+Compared to `panic`, you can see it includes logging functionality. It functions the same way as `panic()` but commonly features logging capabilities.

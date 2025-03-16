@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/YangTaeyoung/hugo-ai-translator/config"
@@ -35,18 +36,13 @@ type ParserConfig struct {
 	ContentDir      string
 	IgnoreRules     []string
 	TargetLanguages config.LanguageCodes
+	SourceLanguage  config.LanguageCode
 	TargetPathRule  string
 }
 
-type TranslateFrontMatter struct {
-	Translated bool `yaml:"translated"`
-}
-
-type TranslateFrontMatters []TranslateFrontMatter
-
 type Parser interface {
-	Parse(ctx context.Context) (ParsedMarkdownFiles, error)
-	Simple(ctx context.Context) (ParsedMarkdownFiles, error)
+	Parse(ctx context.Context) (MarkdownFiles, error)
+	Simple(ctx context.Context) (MarkdownFiles, error)
 }
 
 type parser struct {
@@ -59,9 +55,9 @@ func NewParser(cfg ParserConfig) Parser {
 	}
 }
 
-func (p parser) Simple(_ context.Context) (ParsedMarkdownFiles, error) {
+func (p parser) Simple(_ context.Context) (MarkdownFiles, error) {
 	// ContentDir에 있는 모든 .md파일을 읽어서 반환
-	var markdownFiles ParsedMarkdownFiles
+	var markdownFiles MarkdownFiles
 
 	paths, err := os.ReadDir(p.cfg.ContentDir)
 	if err != nil {
@@ -69,7 +65,10 @@ func (p parser) Simple(_ context.Context) (ParsedMarkdownFiles, error) {
 	}
 
 	for _, path := range paths {
-		var file []byte
+		var (
+			file     []byte
+			fileName string
+		)
 
 		if path.IsDir() {
 			continue
@@ -84,11 +83,20 @@ func (p parser) Simple(_ context.Context) (ParsedMarkdownFiles, error) {
 			return nil, err
 		}
 
-		markdownFiles = append(markdownFiles, ParsedMarkdownFile{
-			Path:            path.Name(),
-			Markdown:        Markdown(file),
-			TargetLanguages: p.cfg.TargetLanguages,
-		})
+		fileName, err = FileNameWithoutExtension(path.Name())
+		if err != nil {
+			return nil, err
+		}
+
+		for _, language := range p.cfg.TargetLanguages {
+			markdownFiles = append(markdownFiles, MarkdownFile{
+				OriginDir: filepath.Dir(path.Name()),
+				FileName:  fileName,
+				Content:   Markdown(file),
+				Language:  language,
+			})
+		}
+
 	}
 
 	return markdownFiles, nil
@@ -140,11 +148,10 @@ func (p parser) listMarkdownFilePaths() ([]string, error) {
 	return results, nil
 }
 
-func (p parser) Parse(ctx context.Context) (ParsedMarkdownFiles, error) {
+func (p parser) Parse(ctx context.Context) (MarkdownFiles, error) {
 	var (
-		originMarkdownFiles ParsedMarkdownFiles
-		markdownFiles       ParsedMarkdownFiles
-		translatedMap       = make(map[string]bool)
+		markdownFiles MarkdownFiles
+		translatedMap = make(map[string]bool)
 	)
 
 	filePaths, err := p.listMarkdownFilePaths()
@@ -157,14 +164,19 @@ func (p parser) Parse(ctx context.Context) (ParsedMarkdownFiles, error) {
 	// 파싱한 front matter에 translated가 true로 설정되어 있으면 이미 번역된 파일로 간주,
 	// translatedMap에 파일 경로를 키로 추가하고 이미 번역된 파일을 다시 번역하지 않기 위해 skip
 	for _, filePath := range filePaths {
-		var file []byte
+		var (
+			file     []byte
+			fileName string
+		)
 
 		file, err = os.ReadFile(path.Join(p.cfg.ContentDir, filePath))
 		if err != nil {
 			return nil, err
 		}
 
-		var frontMatter TranslateFrontMatter
+		var frontMatter struct {
+			Translated bool `yaml:"translated"`
+		}
 
 		if _, err = frontmatter.Parse(bytes.NewReader(file), &frontMatter); err != nil {
 			return nil, err
@@ -176,24 +188,16 @@ func (p parser) Parse(ctx context.Context) (ParsedMarkdownFiles, error) {
 			continue
 		}
 
-		originMarkdownFiles = append(originMarkdownFiles, ParsedMarkdownFile{
-			Path:     filePath,
-			Markdown: Markdown(file),
-		})
-	}
+		fileName, err = FileNameWithoutExtension(filePath)
+		if err != nil {
+			return nil, err
+		}
 
-	// Origin Markdown 파일을 기반으로 번역할 언어를 설정. 이전 스텝에서 이미 번역된 파일의 경우 해당 파일의 번역 언어를 설정하지 않음
-	for _, originMarkdownFile := range originMarkdownFiles {
 		for _, lang := range p.cfg.TargetLanguages {
-			var fileName string
-
-			fileName, err = FileNameWithoutExtension(originMarkdownFile.Path)
-			if err != nil {
-				return nil, err
-			}
-
-			targetFilePath := TargetFilePath(p.cfg.TargetPathRule, filepath.Dir(originMarkdownFile.Path), lang.String(), fileName)
-			targetFilePath = strings.TrimPrefix(targetFilePath, "./")
+			targetFilePath := strings.TrimPrefix(
+				TargetFilePath(p.cfg.TargetPathRule, filepath.Dir(filePath), lang.String(), fileName),
+				"./",
+			)
 
 			slog.Debug("output path for translated markdown", "path", targetFilePath)
 
@@ -202,15 +206,26 @@ func (p parser) Parse(ctx context.Context) (ParsedMarkdownFiles, error) {
 				continue
 			}
 
-			originMarkdownFile.TargetLanguages = append(originMarkdownFile.TargetLanguages, lang)
-		}
+			originDir := filepath.Dir(filePath)
 
-		if len(originMarkdownFile.TargetLanguages) == 0 {
-			slog.DebugContext(ctx, "skip origin markdown file because no target languages", "path", originMarkdownFile.Path)
-			continue
-		}
+			// OriginDir이 SourceLanguage를 포함하고 있는 경우 제거
+			// ex) /en/docs -> /docs
+			fragments := strings.Split(originDir, "/")
+			if len(fragments) > 0 {
+				if i := slices.Index(fragments, p.cfg.SourceLanguage.String()); i >= 0 {
+					fragments = append(fragments[:i], fragments[i+1:]...)
+				}
 
-		markdownFiles = append(markdownFiles, originMarkdownFile)
+				originDir = filepath.Join(fragments...)
+			}
+
+			markdownFiles = append(markdownFiles, MarkdownFile{
+				OriginDir: originDir,
+				Content:   Markdown(file),
+				FileName:  fileName,
+				Language:  lang,
+			})
+		}
 	}
 
 	return markdownFiles, nil
