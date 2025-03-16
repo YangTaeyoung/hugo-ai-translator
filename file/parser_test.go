@@ -27,7 +27,7 @@ func Test_parser_Parse(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
-		want    ParsedMarkdownFiles
+		want    MarkdownFiles
 		wantErr bool
 	}{
 		{
@@ -42,22 +42,21 @@ func Test_parser_Parse(t *testing.T) {
 						config.LanguageCodeEnglish,
 					},
 					TargetPathRule: "{{origin}}/{{filename}}.{{language}}.md",
+					SourceLanguage: config.LanguageCodeKorean,
 				},
 			},
-			want: ParsedMarkdownFiles{
+			want: MarkdownFiles{
 				{
-					Path: "hello/bar.md",
-					TargetLanguages: config.LanguageCodes{
-						config.LanguageCodeEnglish,
-					},
-					Markdown: Markdown(barMd),
+					OriginDir: "hello",
+					FileName:  "bar",
+					Language:  config.LanguageCodeEnglish,
+					Content:   Markdown(barMd),
 				},
 				{
-					Path: "hello/foo.md",
-					TargetLanguages: config.LanguageCodes{
-						config.LanguageCodeEnglish,
-					},
-					Markdown: Markdown(fooMd),
+					OriginDir: "hello",
+					FileName:  "foo",
+					Language:  config.LanguageCodeEnglish,
+					Content:   Markdown(fooMd),
 				},
 			},
 			wantErr: false,
@@ -95,7 +94,7 @@ func Test_parser_Simple(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    ParsedMarkdownFiles
+		want    MarkdownFiles
 		wantErr bool
 	}{
 		{
@@ -112,16 +111,21 @@ func Test_parser_Simple(t *testing.T) {
 			args: args{
 				ctx: t.Context(),
 			},
-			want: ParsedMarkdownFiles{
+			want: MarkdownFiles{
 				{
-					Path:     "test.md",
-					Markdown: "# Hello, World!",
-					TargetLanguages: config.LanguageCodes{
-						config.LanguageCodeEnglish,
-						config.LanguageCodeKorean,
-					},
+					FileName:  "test",
+					Content:   "# Hello, World!",
+					OriginDir: ".",
+					Language:  config.LanguageCodeEnglish,
+				},
+				{
+					FileName:  "test",
+					Content:   "# Hello, World!",
+					OriginDir: ".",
+					Language:  config.LanguageCodeKorean,
 				},
 			},
+
 			wantErr: false,
 		},
 	}
@@ -143,6 +147,7 @@ func TestNewParser(t *testing.T) {
 		IgnoreRules:     []string{"world/**"},
 		TargetLanguages: config.LanguageCodes{config.LanguageCodeEnglish},
 		TargetPathRule:  "{{origin}}/{{filename}}.{{language}}.md",
+		SourceLanguage:  config.LanguageCodeKorean,
 	}
 	type args struct {
 		cfg ParserConfig

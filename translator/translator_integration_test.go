@@ -45,7 +45,7 @@ func Test_Integration_Translate(t *testing.T) {
 
 	type args struct {
 		ctx    context.Context
-		source file.ParsedMarkdownFile
+		source *file.MarkdownFile
 	}
 	tests := []struct {
 		name    string
@@ -65,12 +65,11 @@ func Test_Integration_Translate(t *testing.T) {
 			},
 			args: args{
 				ctx: ctx,
-				source: file.ParsedMarkdownFile{
-					Markdown: file.Markdown(testPostingMd),
-					Path:     "path/to/file",
-					TargetLanguages: config.LanguageCodes{
-						config.LanguageCodeEnglish, config.LanguageCodeFrench, config.LanguageCodeChinese,
-					},
+				source: &file.MarkdownFile{
+					Content:   file.Markdown(testPostingMd),
+					OriginDir: "path/to",
+					FileName:  "file",
+					Language:  config.LanguageCodeEnglish,
 				},
 			},
 			want:    3,
@@ -83,16 +82,15 @@ func Test_Integration_Translate(t *testing.T) {
 				client: tt.fields.client,
 				cfg:    tt.fields.cfg,
 			}
-			got, err := tr.Translate(tt.args.ctx, tt.args.source)
-			for _, g := range got {
-				fileName := fmt.Sprintf("testing.%s.md", g.Language.String())
-				if err = os.WriteFile(path.Join(".", "test_result", fileName), []byte(g.Content), 0644); err != nil {
-					t.Fatal(err)
-				}
+			err = tr.Translate(tt.args.ctx, tt.args.source)
+			fileName := fmt.Sprintf("testing.%s.md", tt.args.source.Language.String())
+			if err = os.WriteFile(path.Join(".", "test_result", fileName), []byte(tt.args.source.Translated), 0644); err != nil {
+				t.Fatal(err)
 			}
-			slog.InfoContext(ctx, "translated", "got", got)
+
+			slog.InfoContext(ctx, "translated", "content", tt.args.source.Translated)
 			assert.Equalf(t, tt.wantErr, err != nil, "translator.Translate() error = %v, wantErr %v", err, tt.wantErr)
-			assert.Equalf(t, len(got), tt.want, "translator.Translate() = %v, want %v", len(got), tt.want)
+			assert.NotEmptyf(t, tt.args.source.Translated, "translated content is empty")
 		})
 	}
 }

@@ -5,9 +5,8 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"log/slog"
-	"path/filepath"
-	"sync"
 	"text/template"
 
 	"github.com/YangTaeyoung/hugo-ai-translator/config"
@@ -15,7 +14,6 @@ import (
 	"github.com/YangTaeyoung/hugo-ai-translator/llm"
 	"github.com/openai/openai-go"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -39,7 +37,7 @@ type Config struct {
 }
 
 type Translator interface {
-	Translate(ctx context.Context, source file.ParsedMarkdownFile) (file.MarkdownFiles, error)
+	Translate(ctx context.Context, source *file.MarkdownFile) error
 }
 
 type translator struct {
@@ -54,115 +52,84 @@ func New(client llm.OpenAIClient, cfg Config) Translator {
 	}
 }
 
-func (t *translator) Translate(ctx context.Context, source file.ParsedMarkdownFile) (file.MarkdownFiles, error) {
+func (t *translator) Translate(ctx context.Context, source *file.MarkdownFile) error {
 	var (
-		translated file.MarkdownFiles
-		mu         sync.Mutex
-		err        error
+		tmpl *template.Template
+		res  *openai.ChatCompletion
+		err  error
 	)
+	slog.DebugContext(ctx, "translating markdown file", "language", source.Language, "originDir", source.OriginDir, "fileName", source.FileName)
 
-	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(MaxWorkers)
+	tmpl, err = template.New("prompt").Parse(promptMd)
+	if err != nil {
+		return err
+	}
 
-	for _, language := range source.TargetLanguages {
-		targetLanguage := language
+	var buf bytes.Buffer
 
-		g.Go(func() error {
-			var (
-				fileName string
-				tmpl     *template.Template
-				res      *openai.ChatCompletion
-			)
-			slog.DebugContext(ctx, "translating markdown file", "language", targetLanguage, "path", source.Path)
+	if err = tmpl.Execute(&buf, struct {
+		SourceLanguage string
+		TargetLanguage string
+		Source         string
+	}{
+		SourceLanguage: t.cfg.SourceLanguage.Name().String(),
+		TargetLanguage: source.Language.Name().String(),
+		Source:         source.Content.String(),
+	}); err != nil {
+		return err
+	}
 
-			tmpl, err = template.New("prompt").Parse(promptMd)
-			if err != nil {
-				return err
-			}
+	prompt := buf.String()
 
-			var buf bytes.Buffer
+	schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{
+		Name:        openai.F("markdown"),
+		Description: openai.F("translated markdown"),
+		Schema:      openai.F(TranslateMarkdownSchema()),
+		Strict:      openai.Bool(true),
+	}
 
-			if err = tmpl.Execute(&buf, struct {
-				SourceLanguage string
-				TargetLanguage string
-				Source         string
-			}{
-				SourceLanguage: t.cfg.SourceLanguage.Name().String(),
-				TargetLanguage: targetLanguage.Name().String(),
-				Source:         source.Markdown.String(),
-			}); err != nil {
-				return err
-			}
-
-			prompt := buf.String()
-
-			schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{
-				Name:        openai.F("markdown"),
-				Description: openai.F("translated markdown"),
-				Schema:      openai.F(TranslateMarkdownSchema()),
-				Strict:      openai.Bool(true),
-			}
-
-			res, err = t.client.New(gctx, openai.ChatCompletionNewParams{
-				Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
-					openai.ChatCompletionDeveloperMessageParam{
-						Role: openai.F(openai.ChatCompletionDeveloperMessageParamRoleDeveloper),
-						Content: openai.F([]openai.ChatCompletionContentPartTextParam{
-							{
-								Text: openai.F(instructionMd),
-								Type: openai.F(openai.ChatCompletionContentPartTextTypeText),
-							},
-						}),
+	res, err = t.client.New(ctx, openai.ChatCompletionNewParams{
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.ChatCompletionDeveloperMessageParam{
+				Role: openai.F(openai.ChatCompletionDeveloperMessageParamRoleDeveloper),
+				Content: openai.F([]openai.ChatCompletionContentPartTextParam{
+					{
+						Text: openai.F(instructionMd),
+						Type: openai.F(openai.ChatCompletionContentPartTextTypeText),
 					},
-					openai.UserMessage(prompt),
 				}),
-				ResponseFormat: openai.F[openai.ChatCompletionNewParamsResponseFormatUnion](
-					openai.ResponseFormatJSONSchemaParam{
-						Type:       openai.F(openai.ResponseFormatJSONSchemaTypeJSONSchema),
-						JSONSchema: openai.F(schemaParam),
-					}),
-				Model: openai.F(t.cfg.Model),
-			})
+			},
+			openai.UserMessage(prompt),
+		}),
+		ResponseFormat: openai.F[openai.ChatCompletionNewParamsResponseFormatUnion](
+			openai.ResponseFormatJSONSchemaParam{
+				Type:       openai.F(openai.ResponseFormatJSONSchemaTypeJSONSchema),
+				JSONSchema: openai.F(schemaParam),
+			}),
+		Model: openai.F(t.cfg.Model),
+	})
 
-			if err != nil {
-				return err
-			}
-
-			if len(res.Choices) == 0 {
-				return ErrorEmptyResult
-			}
-
-			if res.Choices[0].Message.Content == "" {
-				return ErrorEmptyResult
-			}
-
-			var response TranslateResponse
-			if err = json.Unmarshal([]byte(res.Choices[0].Message.Content), &response); err != nil {
-				return err
-			}
-
-			fileName, err = file.FileNameWithoutExtension(source.Path)
-			if err != nil {
-				return err
-			}
-
-			mu.Lock()
-			translated = append(translated, file.MarkdownFile{
-				Language:  targetLanguage,
-				FileName:  fileName,
-				OriginDir: filepath.Dir(source.Path),
-				Content:   file.Markdown(response.Markdown),
-			})
-			mu.Unlock()
-
-			slog.DebugContext(ctx, "translated markdown file", "language", targetLanguage, "fileName", fileName)
-
-			return nil
-		})
-	}
-	if err = g.Wait(); err != nil {
-		return nil, err
+	if err != nil {
+		return errors.Wrap(err, "failed to translate markdown")
 	}
 
-	return translated, nil
+	if len(res.Choices) == 0 {
+		return ErrorEmptyResult
+	}
+
+	if res.Choices[0].Message.Content == "" {
+		return ErrorEmptyResult
+	}
+
+	var response TranslateResponse
+	if err = json.Unmarshal([]byte(res.Choices[0].Message.Content), &response); err != nil {
+		fmt.Println(res.Choices[0].Message.Content)
+		return errors.Wrap(err, "failed to unmarshal translated markdown response")
+	}
+
+	source.Translated = file.Markdown(response.Markdown)
+
+	slog.DebugContext(ctx, "translated markdown file", "language", source.Language, "fileName", source.FileName)
+
+	return nil
 }
