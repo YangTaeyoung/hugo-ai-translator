@@ -238,6 +238,9 @@ func DebugModeAction(ctx context.Context, _ *cli.Command, debug bool) error {
 }
 
 func SimpleTranslateAction(ctx context.Context, cmd *cli.Command) error {
+	var (
+		mu sync.Mutex
+	)
 	cfg, err := config.Simple(cmd)
 	if err != nil {
 		return err
@@ -256,21 +259,36 @@ func SimpleTranslateAction(ctx context.Context, cmd *cli.Command) error {
 
 	bar := progressbar.NewOptions(len(markdownFiles), progressbarOpts...)
 
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(8)
+
 	for _, markdownFile := range markdownFiles {
-		bar.Describe(fmt.Sprintf("Translating %s ...", path.Join(markdownFile.OriginDir, markdownFile.FileName+".md")))
+		markdownFile := markdownFile
 
-		err = env.Translator.Translate(ctx, &markdownFile)
-		if err != nil {
-			return err
-		}
+		g.Go(func() error {
+			bar.Describe(fmt.Sprintf("Translating %s ...", path.Join(markdownFile.OriginDir, markdownFile.FileName+".md")))
 
-		if err = env.Writer.Write(ctx, markdownFile); err != nil {
-			return err
-		}
+			err = env.Translator.Translate(gctx, &markdownFile)
+			if err != nil {
+				return err
+			}
 
-		if err = bar.Add(1); err != nil {
-			return errors.Wrap(err, "failed to update progress bar")
-		}
+			if err = env.Writer.Write(gctx, markdownFile); err != nil {
+				return err
+			}
+
+			mu.Lock()
+			if err = bar.Add(1); err != nil {
+				return errors.Wrap(err, "failed to update progress bar")
+			}
+			mu.Unlock()
+
+			return nil
+		})
+	}
+
+	if err = g.Wait(); err != nil {
+		return err
 	}
 
 	slog.InfoContext(ctx, "all markdown files written")
