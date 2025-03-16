@@ -1,87 +1,90 @@
 ---
 translated: true
 ---
-[![Go Test Action](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml/badge.svg)](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml)  
-![GitHub Release](https://img.shields.io/github/v/release/YangTaeyoung/hugo-ai-translator)  
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
+![Go Version](https://img.shields.io/badge/Go-1.24-%23007d9c)
+[![GoDoc](https://godoc.org/github.com/YangTaeyoung/hugo-ai-translator?status.svg)](https://pkg.go.dev/github.com/YangTaeyoung/hugo-ai-translator)
+[![Go Test Action](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml/badge.svg)](https://github.com/YangTaeyoung/hugo-ai-translator/actions/workflows/test-ci.yaml)
+![GitHub Release](https://img.shields.io/github/v/release/YangTaeyoung/hugo-ai-translator)
+![GitHub License](https://img.shields.io/github/license/YangTaeyoung/hugo-ai-translator)
+[![Go report](https://goreportcard.com/badge/github.com/YangTaeyoung/hugo-ai-translator)](https://goreportcard.com/report/github.com/YangTaeyoung/hugo-ai-translator)
 
-# Hallo Hugo AI Übersetzer! 👋  
+# Hallo Hugo AI Translator! 👋
 
-Dieses Dokument ist ein KI-Übersetzer, der Inhalte übersetzt, die in Hugo-Blogs gespeichert sind.  
+Dieses Dokument ist ein KI-Übersetzer, der Inhalte übersetzt, die in Hugo-Blogs gespeichert sind.
 
-Es verwendet das Modell von [OpenAI](https://openai.com) und die übersetzten Ergebnisse werden gemäß der vom Benutzer angegebenen Namensregel gespeichert.  
+Es verwendet das Modell von [OpenAI](https://openai.com) und die übersetzten Ergebnisse werden gemäß der vom Benutzer festgelegten Namensregel gespeichert.
 
-# Übersetzung  
+# Übersetzung
 
-Diese Übersetzung wurde über `hugo-ai-translator` erstellt.  
+Diese Übersetzung wurde durch `hugo-ai-translator` erstellt.
 
-- [Koreanisch](/README.md)  
-- [English](/README.en.md)  
-- [日本語](/README.ja.md)  
-- [中文](/README.cn.md)  
-- [Español](/README.es.md)  
-- [Français](/README.fr.md)  
-- [Deutsch](/README.de.md)  
+- [Deutsch](/README.md)
+- [English](/README.en.md)
+- [日本語](/README.ja.md)
+- [中文](/README.cn.md)
+- [Español](/README.es.md)
+- [Français](/README.fr.md)
+- [Deutsch](/README.de.md)
 
 
-# Unterstützte Sprachen  
+# Unterstützte Sprachen
 
-| Sprache   | Code |  
-|-----------|------|  
-| 한국어        | `ko` |  
-| English   | `en` |  
-| 日本語        | `ja` |  
-| 中文         | `cn` |  
-| Español   | `es` |  
-| Français  | `fr` |  
-| Deutsch   | `de` |  
+| Sprache   | Code |
+|-----------|------|
+| 한국어       | `ko` |
+| English   | `en` |
+| 日本語       | `ja` |
+| 中文        | `cn` |
+| Español   | `es` |
+| Français  | `fr` |
+| Deutsch   | `de` |
 
-# Installation  
+# Installation
 
-Sie können es mit einem einfachen Befehl installieren.  
+Kann einfach mit einem Befehl installiert werden.
 
-```shell  
-go install github.com/YangTaeyoung/hugo-ai-translator@v1.1.0  
-```  
+```shell
+go install github.com/YangTaeyoung/hugo-ai-translator@v1.1.1
+```
 
-# Konfigurieren  
+# Konfigurieren
 
-Sie können die Konfiguration für den hugo-ai-translator mit dem folgenden Befehl vornehmen.  
+Die folgenden Befehle können verwendet werden, um die Konfiguration von hugo-ai-translator auszuführen.
 
-```shell  
-hugo-ai-translator configure  
-```  
+```shell
+hugo-ai-translator configure
+```
 
-Für detailliertere Informationen zur Konfiguration werfen Sie bitte einen Blick in das [Konfigurationsdokument](docs/configure.md).  
+Für genauere Informationen zur Konfiguration siehe das [Konfigurationsdokument](docs/configure.md).
 
-# Nutzung  
+# Verwendung
 
-## Einfache Übersetzung  
+## Einfache Übersetzung
 
-Sie können alle Markdown-Dateien im aktuellen Ordner mit einfachen Regeln übersetzen.  
+Es können alle Markdown-Dateien im aktuellen Ordner mit einfachen Regeln übersetzt werden.
 
-### Schnelleinstieg  
+### Schneller Einstieg
 
-```shell  
-cd path/to/markdown-directory  
-  
-hugo-ai-translator simple --source-language en \  
-  --target-language ko \  
-  --target-languages all \  
-  --model gpt-4o-mini \  
-  --api-key {open ai api key}  
-```  
+```shell
+cd path/to/markdown-directory
 
-## Regelbasierte Übersetzung  
+hugo-ai-translator simple --source-language en \
+  --target-language ko \
+  --target-languages all \
+  --model gpt-4o-mini \
+  --api-key {open ai api key}
+``` 
 
-Sie können Übersetzungen mithilfe spezifischer Regeln durchführen.  
+## Regelbasierte Übersetzung
 
-Es ist erforderlich, [Configure](docs/configure.md) vorher durchzuführen, und die Übersetzung erfolgt gemäß den festgelegten Regeln.  
+Es kann mit bestimmten Regeln übersetzt werden.
 
-### Schnelleinstieg  
+Die [Konfiguration](docs/configure.md) muss zuerst erfolgen, und die Übersetzung erfolgt gemäß den festgelegten Regeln.
 
-Wenn die Konfiguration vorhanden ist, können Sie die Übersetzung auch ohne Verwendung anderer Optionen wie folgt durchführen.  
+### Schneller Einstieg
 
-```shell  
-hugo-ai-translator  
-```  
+Wenn die Einstellungen vorhanden sind, ist es möglich, die Übersetzung auch ohne andere Optionen wie folgt durchzuführen.
+
+```shell
+hugo-ai-translator
+```
