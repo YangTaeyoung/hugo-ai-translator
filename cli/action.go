@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/YangTaeyoung/hugo-ai-translator/config"
 	"github.com/YangTaeyoung/hugo-ai-translator/environment"
@@ -18,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli/v3"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 )
 
@@ -79,6 +81,7 @@ var progressbarOpts = []progressbar.Option{
 
 func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 	var (
+		mu      sync.Mutex
 		cfgPath = cmd.String("config")
 	)
 
@@ -99,21 +102,34 @@ func TranslateAction(ctx context.Context, cmd *cli.Command) error {
 
 	bar := progressbar.NewOptions(len(markdownFiles), progressbarOpts...)
 
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(8)
 	for _, markdownFile := range markdownFiles {
+		markdownFile := markdownFile
 		bar.Describe(fmt.Sprintf("Translating %s ...", path.Join(markdownFile.OriginDir, markdownFile.FileName+".md")))
 
-		err = env.Translator.Translate(ctx, &markdownFile)
-		if err != nil {
-			return err
-		}
+		g.Go(func() error {
+			err = env.Translator.Translate(gctx, &markdownFile)
+			if err != nil {
+				return err
+			}
 
-		if err = env.Writer.Write(ctx, markdownFile); err != nil {
-			return err
-		}
+			if err = env.Writer.Write(gctx, markdownFile); err != nil {
+				slog.ErrorContext(gctx, "failed to write markdown file", "error", err)
+				return nil
+			}
 
-		if err = bar.Add(1); err != nil {
-			return errors.Wrap(err, "failed to update progress bar")
-		}
+			mu.Lock()
+			if err = bar.Add(1); err != nil {
+				return errors.Wrap(err, "failed to update progress bar")
+			}
+			mu.Unlock()
+
+			return nil
+		})
+	}
+	if err = g.Wait(); err != nil {
+		return err
 	}
 
 	return nil

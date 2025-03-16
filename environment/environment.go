@@ -30,6 +30,7 @@ func New(cfg *config.Config) *Environment {
 		TargetLanguages: cfg.Translator.Target.TargetLanguages,
 		TargetPathRule:  cfg.Translator.Target.TargetPathRule,
 		IgnoreRules:     cfg.Translator.Source.IgnoreRules,
+		SourceLanguage:  cfg.Translator.Source.SourceLanguage,
 	})
 
 	env.Writer = file.NewWriter(file.WriterConfig{
