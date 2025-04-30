@@ -72,7 +72,7 @@ hugo-ai-translator simple --source-language en \
   --api-key {open ai api key}
 ``` 
 
-## Rull Base Translation
+## Rule Base Translation
 
 특정한 룰을 적용하여 번역할 수 있습니다.
 
